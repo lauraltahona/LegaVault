@@ -1,0 +1,76 @@
+"""Configuración central de la aplicación.
+
+Los parámetros sensibles o ajustables se leen de variables de entorno con
+valores por defecto válidos para un entorno académico/de desarrollo. Nunca
+deben usarse los valores por defecto en producción.
+"""
+
+from __future__ import annotations
+
+import os
+from dataclasses import dataclass, field
+from pathlib import Path
+
+# backend/  (este archivo vive en backend/app/core/config.py)
+BACKEND_DIR = Path(__file__).resolve().parents[2]
+DEFAULT_DATA_DIR = BACKEND_DIR / "data"
+
+
+def _env_int(name: str, default: int) -> int:
+    try:
+        return int(os.getenv(name, str(default)))
+    except (TypeError, ValueError):
+        return default
+
+
+@dataclass(frozen=True)
+class Settings:
+    """Parámetros de configuración de LegalVault."""
+
+    app_name: str = "LegalVault API"
+    version: str = "1.0.0"
+    api_prefix: str = "/api"
+
+    # Persistencia local (JSON) mientras no se use una base de datos real.
+    data_dir: Path = field(
+        default_factory=lambda: Path(os.getenv("LEGALVAULT_DATA_DIR", str(DEFAULT_DATA_DIR)))
+    )
+
+    # --- Seguridad de cuentas (Módulos 1 y 7) ---
+    max_intentos_fallidos: int = field(default_factory=lambda: _env_int("LEGALVAULT_MAX_INTENTOS", 5))
+    minutos_bloqueo: int = field(default_factory=lambda: _env_int("LEGALVAULT_MINUTOS_BLOQUEO", 15))
+
+    # --- Tokens de sesión (Módulo 1) ---
+    secret_key: str = field(
+        default_factory=lambda: os.getenv("LEGALVAULT_SECRET_KEY", "dev-secret-cambiar-en-produccion")
+    )
+    algorithm: str = "HS256"
+    minutos_expiracion_token: int = field(
+        default_factory=lambda: _env_int("LEGALVAULT_MINUTOS_TOKEN", 60)
+    )
+
+    # --- CORS para el frontend (React/Vite) ---
+    cors_origins: tuple[str, ...] = (
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    )
+
+    # --- Documentos (Módulo 3) ---
+    max_tamano_archivo_mb: int = field(
+        default_factory=lambda: _env_int("LEGALVAULT_MAX_ARCHIVO_MB", 25)
+    )
+
+    @property
+    def max_tamano_archivo_bytes(self) -> int:
+        return self.max_tamano_archivo_mb * 1024 * 1024
+
+    @property
+    def uploads_dir(self) -> Path:
+        return self.data_dir / "uploads"
+
+    def ensure_directories(self) -> None:
+        self.data_dir.mkdir(parents=True, exist_ok=True)
+        self.uploads_dir.mkdir(parents=True, exist_ok=True)
+
+
+settings = Settings()

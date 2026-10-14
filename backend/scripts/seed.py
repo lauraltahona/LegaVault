@@ -1,0 +1,105 @@
+"""Datos ficticios de demostración (se ejecuta manualmente).
+
+Uso (desde la carpeta ``backend``):
+    python -m scripts.seed
+"""
+
+from __future__ import annotations
+
+from app.core.bootstrap import asegurar_datos_iniciales
+from app.core.constants import (
+    EstadoExpediente,
+    NivelSensibilidad,
+    Rol,
+    TipoDocumento,
+    TipoProceso,
+)
+from app.core.container import (
+    documento_repository,
+    documento_service,
+    expediente_service,
+    user_repository,
+    user_service,
+)
+from app.models.user import User
+
+
+def _crear_usuario_si_no_existe(actor: User, datos: dict) -> User:
+    existente = user_repository().get_by_username(datos["username"])
+    if existente is not None:
+        return existente
+    return user_service().crear(datos, actor=actor)
+
+
+def ejecutar() -> None:
+    asegurar_datos_iniciales()
+
+    admin = user_repository().get_by_username("admin")
+    if admin is None:  # pragma: no cover - no debería ocurrir tras el bootstrap
+        raise RuntimeError("No se encontró el administrador inicial.")
+
+    abogado = _crear_usuario_si_no_existe(
+        admin,
+        {
+            "username": "abogado.demo",
+            "nombre_completo": "Laura Gómez (abogada)",
+            "email": "laura.gomez@legalvault.local",
+            "password": "Abogado123!",
+            "rol": Rol.ABOGADO,
+        },
+    )
+    asistente = _crear_usuario_si_no_existe(
+        admin,
+        {
+            "username": "asistente.demo",
+            "nombre_completo": "Mario Ruiz (asistente)",
+            "email": "mario.ruiz@legalvault.local",
+            "password": "Asistente123!",
+            "rol": Rol.ASISTENTE,
+        },
+    )
+
+    existentes = expediente_service().listar(admin)
+    if not any(exp.identificador == "EXP-2026-001" for exp in existentes):
+        expediente = expediente_service().crear(
+            {
+                "identificador": "EXP-2026-001",
+                "asunto": "Reclamación de cantidad por incumplimiento de contrato",
+                "cliente": "Construcciones Delta S.L.",
+                "tipo_proceso": TipoProceso.CIVIL.value,
+                "estado": EstadoExpediente.EN_TRAMITE.value,
+                "abogado_responsable_id": abogado.id,
+                "descripcion": "Expediente de demostración con datos ficticios.",
+                "usuarios_autorizados": [asistente.id],
+            },
+            actor=abogado,
+        )
+
+        documento_service().subir(
+            abogado,
+            expediente_id=expediente.id,
+            contenido=b"Contrato de demostracion (contenido ficticio).\n",
+            nombre_original="contrato_demo.txt",
+            tipo=TipoDocumento.CONTRATO.value,
+            nivel_sensibilidad=NivelSensibilidad.INTERNO.value,
+            descripcion="Documento de ejemplo.",
+        )
+        documento_service().subir(
+            abogado,
+            expediente_id=expediente.id,
+            contenido=b"Declaracion confidencial de ejemplo (ficticia).\n",
+            nombre_original="declaracion_confidencial_demo.txt",
+            tipo=TipoDocumento.DECLARACION.value,
+            nivel_sensibilidad=NivelSensibilidad.CONFIDENCIAL.value,
+            descripcion="Solo visible para abogados y administradores.",
+        )
+
+    print("\n[LegalVault] Datos de demostración listos.")
+    print("  admin           / Admin123!")
+    print("  abogado.demo    / Abogado123!")
+    print("  asistente.demo  / Asistente123!")
+    print(f"  documentos: {documento_repository().count()}")
+
+
+if __name__ == "__main__":
+    ejecutar()
