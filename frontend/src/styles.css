@@ -308,6 +308,13 @@ code {
   color: #334155;
 }
 
+.celda-hash {
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 0.78rem;
+  color: #64748b;
+  white-space: nowrap;
+}
+
 .acciones {
   display: flex;
   gap: 6px;
@@ -699,6 +706,60 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: center;
+  color: var(--texto-suave);
+}
+
+/* ---------- Bóveda cifrada (Módulo 4) ---------- */
+.tarjeta-boveda {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tarjeta-boveda .lista-datos {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.boveda-contenido {
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 12px 14px;
+  max-height: 240px;
+  overflow: auto;
+}
+
+.lista-entradas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.lista-entradas .entrada {
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--borde);
+}
+
+.lista-entradas .entrada:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.lista-entradas .entrada strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.lista-entradas .entrada p {
+  margin: 0;
+  white-space: pre-wrap;
+  color: #334155;
+}
+
+.lista-entradas .entrada small {
   color: var(--texto-suave);
 }
 

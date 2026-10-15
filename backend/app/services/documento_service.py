@@ -12,13 +12,16 @@ from pathlib import Path
 
 from app.core.config import settings
 from app.core.constants import (
-    ROLES_GESTION_EXPEDIENTES,
+    AccionAuditoria,
+    ROLES_CARGA_DOCUMENTOS,
     NivelSensibilidad,
+    ResultadoAuditoria,
+    Rol,
     SeveridadAlerta,
     TipoAlerta,
     TipoDocumento,
 )
-from app.core.exceptions import ConflictError, NotFoundError, ValidationError
+from app.core.exceptions import NotFoundError, PermissionDeniedError, ValidationError
 from app.core.validators import validar_texto_obligatorio
 from app.models.base import new_id
 from app.models.documento import Documento
@@ -27,12 +30,14 @@ from app.models.user import User
 from app.repositories.documento_repository import DocumentoRepository
 from app.repositories.expediente_repository import ExpedienteRepository
 from app.services.alerta_service import AlertaService
+from app.services.auditoria_service import AuditoriaService
 from app.services.permissions import (
+    asegurar_accion,
     asegurar_acceso_expediente,
+    asegurar_descargar_documento,
     asegurar_rol,
-    asegurar_ver_documento,
-    es_admin,
-    puede_ver_documento,
+    puede_eliminar_documento,
+    puede_leer_documento,
 )
 
 _TIPOS = {tipo.value for tipo in TipoDocumento}
@@ -45,10 +50,12 @@ class DocumentoService:
         repository: DocumentoRepository,
         expediente_repository: ExpedienteRepository,
         alertas: AlertaService,
+        auditoria: AuditoriaService,
     ) -> None:
         self._repo = repository
         self._expedientes = expediente_repository
         self._alertas = alertas
+        self._auditoria = auditoria
 
     # --- consultas ------------------------------------------------------
     def listar(
@@ -70,7 +77,7 @@ class DocumentoService:
 
         def coincide(documento: Documento) -> bool:
             exp = expediente_de(documento)
-            if exp is None or not puede_ver_documento(actor, documento, exp):
+            if exp is None or not puede_leer_documento(actor, documento, exp):
                 return False
             if expediente_id and documento.expediente_id != expediente_id:
                 return False
@@ -100,12 +107,12 @@ class DocumentoService:
         nivel_sensibilidad: str,
         descripcion: str = "",
     ) -> Documento:
-        asegurar_rol(actor, *ROLES_GESTION_EXPEDIENTES)
+        asegurar_rol(actor, *ROLES_CARGA_DOCUMENTOS)
 
         exp = self._expedientes.get(expediente_id)
         if exp is None:
             raise NotFoundError("El expediente indicado no existe.")
-        asegurar_acceso_expediente(actor, exp)
+        asegurar_accion(actor, exp, "cargar")
 
         nombre_seguro = self._sanitizar_nombre(nombre_original)
         if not contenido:
@@ -119,6 +126,11 @@ class DocumentoService:
         nivel = self._normalizar(
             nivel_sensibilidad, _NIVELES, NivelSensibilidad, "nivel de sensibilidad"
         )
+        # Mínimo privilegio: el asistente no puede crear documentos confidenciales.
+        if actor.rol == Rol.ASISTENTE and nivel == NivelSensibilidad.CONFIDENCIAL:
+            raise PermissionDeniedError(
+                "El asistente jurídico no puede cargar documentos confidenciales."
+            )
 
         documento = Documento(
             id=new_id(),
@@ -148,11 +160,21 @@ class DocumentoService:
             usuario=actor.username,
             usuario_id=actor.id,
         )
+        self._auditoria.registrar(
+            AccionAuditoria.DOCUMENTO_CARGADO,
+            actor=actor,
+            entidad="documento",
+            entidad_id=documento.id,
+            detalle=(
+                f"Documento '{documento.nombre_original}' cargado en el expediente "
+                f"'{exp.identificador}'."
+            ),
+        )
         return documento
 
     def ruta_descarga(self, documento_id: str, actor: User) -> tuple[Documento, Path]:
         documento, exp = self._obtener_con_expediente(documento_id, actor)
-        asegurar_ver_documento(actor, documento, exp)
+        asegurar_descargar_documento(actor, documento, exp)
 
         archivo = settings.uploads_dir / documento.nombre_almacenado
         if not archivo.exists():
@@ -167,11 +189,21 @@ class DocumentoService:
             usuario=actor.username,
             usuario_id=actor.id,
         )
+        self._auditoria.registrar(
+            AccionAuditoria.DOCUMENTO_DESCARGADO,
+            actor=actor,
+            entidad="documento",
+            entidad_id=documento.id,
+            detalle=(
+                f"Documento '{documento.nombre_original}' descargado del expediente "
+                f"'{exp.identificador}'."
+            ),
+        )
         return documento, archivo
 
     def eliminar(self, documento_id: str, actor: User) -> None:
         documento, exp = self._obtener_con_expediente(documento_id, actor)
-        if not es_admin(actor) and actor.id != documento.subido_por_id:
+        if not puede_eliminar_documento(actor, documento, exp):
             self._alertas.registrar(
                 TipoAlerta.ACCESO_DENEGADO,
                 severidad=SeveridadAlerta.ADVERTENCIA,
@@ -179,7 +211,18 @@ class DocumentoService:
                 usuario=actor.username,
                 usuario_id=actor.id,
             )
-            raise ConflictError("Solo el autor del documento o un administrador pueden eliminarlo.")
+            self._auditoria.registrar(
+                AccionAuditoria.ACCESO_DENEGADO,
+                actor=actor,
+                entidad="documento",
+                entidad_id=documento.id,
+                resultado=ResultadoAuditoria.DENEGADO,
+                detalle=f"Intento de eliminar el documento '{documento.nombre_original}' sin permisos.",
+            )
+            raise PermissionDeniedError(
+                "Solo el autor del documento, un administrador o quien tenga permiso "
+                "de eliminación pueden borrarlo."
+            )
 
         archivo = settings.uploads_dir / documento.nombre_almacenado
         if archivo.exists():
@@ -194,6 +237,16 @@ class DocumentoService:
             usuario=actor.username,
             usuario_id=actor.id,
             severidad=SeveridadAlerta.ADVERTENCIA,
+        )
+        self._auditoria.registrar(
+            AccionAuditoria.DOCUMENTO_ELIMINADO,
+            actor=actor,
+            entidad="documento",
+            entidad_id=documento.id,
+            detalle=(
+                f"Documento '{documento.nombre_original}' eliminado del expediente "
+                f"'{exp.identificador}'."
+            ),
         )
 
     # --- utilidades internas -------------------------------------------

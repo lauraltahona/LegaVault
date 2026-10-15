@@ -41,6 +41,13 @@ export default function ExpedientesPage() {
     [personas],
   )
 
+  // Editar/archivar: administrador, el abogado responsable del expediente o
+  // quien tenga concedida la acción 'editar' en la matriz de permisos (Módulo 5).
+  const puedeGestionarExp = (exp) =>
+    esAdmin ||
+    exp.abogado_responsable_id === usuario.id ||
+    exp.permisos?.[usuario.id]?.editar === true
+
   async function cargar() {
     setCargando(true)
     try {
@@ -208,12 +215,12 @@ export default function ExpedientesPage() {
                   <td>{exp.total_documentos ?? 0}</td>
                   <td>{fecha(exp.actualizado_en)}</td>
                   <td className="acciones">
-                    {puedeGestionar && (
+                    {puedeGestionarExp(exp) && (
                       <button type="button" className="boton boton-mini" onClick={() => abrirEditar(exp)}>
                         Editar
                       </button>
                     )}
-                    {puedeGestionar && exp.estado !== 'archivado' && (
+                    {puedeGestionarExp(exp) && exp.estado !== 'archivado' && (
                       <button
                         type="button"
                         className="boton boton-mini boton-peligro"

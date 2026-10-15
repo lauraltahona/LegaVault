@@ -1,0 +1,9 @@
+# Dependencias solo para desarrollo y pruebas.
+# Instalar junto a requirements.txt:
+#   .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+#
+# Nota: starlette (>= 1.8) usa 'httpx2' para su TestClient, que es el que
+# utiliza scripts/smoke_test.py y la futura suite de pruebas con pytest.
+
+pytest==9.1.1
+httpx2==2.13.1

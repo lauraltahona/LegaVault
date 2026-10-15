@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom'
 import Aviso from '../components/Aviso.jsx'
 import Insignia, { tonoEstado, tonoSeveridad } from '../components/Insignia.jsx'
 import { listarAlertas, resumenAlertas } from '../api/alertas.js'
+import { resumenAuditoria } from '../api/auditoria.js'
+import { listarBovedas } from '../api/bovedas.js'
 import { listarDocumentos } from '../api/documentos.js'
 import { listarExpedientes } from '../api/expedientes.js'
 import { listarUsuarios } from '../api/usuarios.js'
@@ -15,26 +17,35 @@ export default function DashboardPage() {
   const { usuario, esAdmin } = useAuth()
   const [expedientes, setExpedientes] = useState([])
   const [documentos, setDocumentos] = useState([])
+  const [bovedas, setBovedas] = useState([])
   const [resumen, setResumen] = useState(null)
   const [alertas, setAlertas] = useState([])
   const [usuarios, setUsuarios] = useState([])
+  const [auditoria, setAuditoria] = useState(null)
   const [error, setError] = useState('')
 
   useEffect(() => {
     async function cargar() {
       try {
-        const [exps, docs] = await Promise.all([listarExpedientes(), listarDocumentos()])
+        const [exps, docs, bvs] = await Promise.all([
+          listarExpedientes(),
+          listarDocumentos(),
+          listarBovedas(),
+        ])
         setExpedientes(exps)
         setDocumentos(docs)
+        setBovedas(bvs)
         if (esAdmin) {
-          const [res, ultimas, users] = await Promise.all([
+          const [res, ultimas, users, audit] = await Promise.all([
             resumenAlertas(),
             listarAlertas({ limite: 5 }),
             listarUsuarios(),
+            resumenAuditoria(),
           ])
           setResumen(res)
           setAlertas(ultimas)
           setUsuarios(users)
+          setAuditoria(audit)
         }
       } catch (err) {
         setError(err.message)
@@ -46,6 +57,7 @@ export default function DashboardPage() {
   const tarjetas = [
     { etiqueta: 'Expedientes con acceso', valor: expedientes.length, tono: 'azul' },
     { etiqueta: 'Documentos disponibles', valor: documentos.length, tono: 'verde' },
+    { etiqueta: 'Bóvedas cifradas', valor: bovedas.length, tono: 'ambar' },
   ]
   if (esAdmin) {
     tarjetas.push({ etiqueta: 'Usuarios', valor: usuarios.length, tono: 'gris' })
@@ -53,6 +65,11 @@ export default function DashboardPage() {
       etiqueta: 'Alertas sin leer',
       valor: resumen?.no_leidas ?? 0,
       tono: (resumen?.no_leidas ?? 0) > 0 ? 'rojo' : 'gris',
+    })
+    tarjetas.push({
+      etiqueta: 'Registros de auditoría',
+      valor: auditoria?.total ?? 0,
+      tono: 'gris',
     })
   }
 

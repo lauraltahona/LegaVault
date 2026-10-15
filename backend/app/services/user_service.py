@@ -8,7 +8,7 @@ Reglas destacadas:
 
 from __future__ import annotations
 
-from app.core.constants import Rol, SeveridadAlerta, TipoAlerta
+from app.core.constants import AccionAuditoria, Rol, SeveridadAlerta, TipoAlerta
 from app.core.exceptions import ConflictError, NotFoundError, PermissionDeniedError, ValidationError
 from app.core.security import hash_password
 from app.core.validators import (
@@ -20,14 +20,21 @@ from app.core.validators import (
 from app.models.user import User
 from app.repositories.user_repository import UserRepository
 from app.services.alerta_service import AlertaService
+from app.services.auditoria_service import AuditoriaService
 
 _ROLES_VALIDOS = {rol.value for rol in Rol}
 
 
 class UserService:
-    def __init__(self, repository: UserRepository, alertas: AlertaService) -> None:
+    def __init__(
+        self,
+        repository: UserRepository,
+        alertas: AlertaService,
+        auditoria: AuditoriaService,
+    ) -> None:
         self._repo = repository
         self._alertas = alertas
+        self._auditoria = auditoria
 
     def listar(self, *, q: str | None = None, rol: Rol | None = None, activo: bool | None = None) -> list[User]:
         objetivo = (q or "").strip().lower()
@@ -78,6 +85,13 @@ class UserService:
             usuario=actor.username,
             usuario_id=actor.id,
         )
+        self._auditoria.registrar(
+            AccionAuditoria.USUARIO_CREADO,
+            actor=actor,
+            entidad="usuario",
+            entidad_id=user.id,
+            detalle=f"Usuario '{user.username}' creado con rol {user.rol.value}.",
+        )
         return user
 
     def actualizar(self, user_id: str, datos: dict, actor: User) -> User:
@@ -105,6 +119,13 @@ class UserService:
             mensaje=f"Datos del usuario '{user.username}' actualizados.",
             usuario=actor.username,
             usuario_id=actor.id,
+        )
+        self._auditoria.registrar(
+            AccionAuditoria.USUARIO_EDITADO,
+            actor=actor,
+            entidad="usuario",
+            entidad_id=user.id,
+            detalle=f"Datos del usuario '{user.username}' actualizados.",
         )
         return user
 
@@ -139,6 +160,16 @@ class UserService:
                 usuario=actor.username,
                 usuario_id=actor.id,
             )
+        self._auditoria.registrar(
+            AccionAuditoria.USUARIO_ESTADO,
+            actor=actor,
+            entidad="usuario",
+            entidad_id=user.id,
+            detalle=(
+                f"Usuario '{user.username}' "
+                f"{'reactivado' if activo else 'desactivado'}."
+            ),
+        )
         return user
 
     def restablecer_password(self, user_id: str, nueva_password: str, actor: User) -> None:
@@ -156,6 +187,13 @@ class UserService:
             usuario_id=actor.id,
             severidad=SeveridadAlerta.ADVERTENCIA,
         )
+        self._auditoria.registrar(
+            AccionAuditoria.USUARIO_PASSWORD,
+            actor=actor,
+            entidad="usuario",
+            entidad_id=user.id,
+            detalle=f"Contraseña restablecida para '{user.username}'.",
+        )
 
     def desbloquear(self, user_id: str, actor: User) -> User:
         """Levanta manualmente un bloqueo temporal (Módulo 7)."""
@@ -172,6 +210,13 @@ class UserService:
             mensaje=f"Bloqueo levantado manualmente para '{user.username}'.",
             usuario=actor.username,
             usuario_id=actor.id,
+        )
+        self._auditoria.registrar(
+            AccionAuditoria.USUARIO_DESBLOQUEADO,
+            actor=actor,
+            entidad="usuario",
+            entidad_id=user.id,
+            detalle=f"Bloqueo levantado manualmente para '{user.username}'.",
         )
         return user
 

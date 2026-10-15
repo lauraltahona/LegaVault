@@ -31,6 +31,12 @@ class ExpedienteUpdate(BaseModel):
     usuarios_autorizados: list[str] | None = None
 
 
+class PermisosUpdate(BaseModel):
+    """Matriz granular ``{usuario_id: {accion: bool}}`` (Módulo 5)."""
+
+    permisos: dict[str, dict[str, bool]] = Field(default_factory=dict)
+
+
 class ExpedienteResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -43,6 +49,7 @@ class ExpedienteResponse(BaseModel):
     abogado_responsable_id: str
     descripcion: str
     usuarios_autorizados: list[str]
+    permisos: dict[str, dict[str, bool]] = Field(default_factory=dict)
     creado_en: datetime
     actualizado_en: datetime
 

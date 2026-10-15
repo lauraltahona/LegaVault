@@ -55,12 +55,60 @@ export const TIPOS_ALERTA = {
   documento_cargado: 'Documento cargado',
   documento_descargado: 'Documento descargado',
   documento_eliminado: 'Documento eliminado',
+  boveda_creada: 'Bóveda creada',
+  boveda_abierta: 'Bóveda abierta',
+  boveda_acceso_fallido: 'Acceso a bóveda fallido',
+  boveda_editada: 'Bóveda editada',
+  boveda_credenciales: 'Credenciales de bóveda',
+  boveda_eliminada: 'Bóveda eliminada',
 }
 
 export const SEVERIDADES = {
   info: 'Informativa',
   advertencia: 'Advertencia',
   critica: 'Crítica',
+}
+
+export const RESULTADOS_AUDITORIA = {
+  ok: 'Correcto',
+  denegado: 'Denegado',
+  error: 'Error',
+}
+
+export const ACCIONES_AUDITORIA = {
+  login: 'Inicio de sesión',
+  login_fallido: 'Inicio de sesión fallido',
+  logout: 'Cierre de sesión',
+  cuenta_bloqueada: 'Cuenta bloqueada',
+  acceso_denegado: 'Acceso denegado',
+  usuario_creado: 'Usuario creado',
+  usuario_editado: 'Usuario editado',
+  usuario_estado: 'Estado de usuario',
+  usuario_password: 'Contraseña restablecida',
+  usuario_desbloqueado: 'Usuario desbloqueado',
+  expediente_creado: 'Expediente creado',
+  expediente_editado: 'Expediente editado',
+  expediente_archivado: 'Expediente archivado',
+  documento_cargado: 'Documento cargado',
+  documento_descargado: 'Documento descargado',
+  documento_eliminado: 'Documento eliminado',
+  boveda_creada: 'Bóveda creada',
+  boveda_abierta: 'Bóveda abierta',
+  boveda_acceso_fallido: 'Acceso a bóveda fallido',
+  boveda_editada: 'Bóveda editada',
+  boveda_credenciales: 'Credenciales de bóveda',
+  boveda_eliminada: 'Bóveda eliminada',
+  expediente_permisos: 'Permisos de expediente',
+  auditoria_verificada: 'Auditoría verificada',
+}
+
+// Acciones de la matriz de permisos granular por expediente (Módulo 5).
+export const ACCIONES_PERMISO = {
+  leer: 'Leer',
+  cargar: 'Cargar',
+  descargar: 'Descargar',
+  editar: 'Editar',
+  eliminar: 'Eliminar',
 }
 
 // Convierte un objeto de etiquetas en una lista de opciones para <select>.

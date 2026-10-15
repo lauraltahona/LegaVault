@@ -15,8 +15,12 @@ from app.core.constants import (
     TipoProceso,
 )
 from app.core.container import (
+    auditoria_repository,
+    boveda_repository,
+    boveda_service,
     documento_repository,
     documento_service,
+    expediente_repository,
     expediente_service,
     user_repository,
     user_service,
@@ -94,11 +98,43 @@ def ejecutar() -> None:
             descripcion="Solo visible para abogados y administradores.",
         )
 
+    # --- Bóveda cifrada de doble fondo (Módulo 4) -----------------------
+    if boveda_repository().count() == 0:
+        expediente_demo = expediente_repository().first(
+            lambda exp: exp.identificador == "EXP-2026-001"
+        )
+        boveda_service().crear(
+            {
+                "nombre": "Reserva estratégica del caso",
+                "descripcion": "Bóveda de demostración con doble fondo (datos ficticios).",
+                "expediente_id": expediente_demo.id if expediente_demo else "",
+                "password_visible": "BovedaPublica123!",
+                "password_confidencial": "BovedaReservada123!",
+                "contenido_visible": (
+                    "Notas de trabajo: contactos del cliente y calendario de plazos."
+                ),
+                "contenido_confidencial": (
+                    "Estrategia reservada: evaluación interna del riesgo y margen de "
+                    "negociación confidencial."
+                ),
+            },
+            actor=abogado,
+        )
+
     print("\n[LegalVault] Datos de demostración listos.")
     print("  admin           / Admin123!")
     print("  abogado.demo    / Abogado123!")
     print("  asistente.demo  / Asistente123!")
+    print(
+        "  bóveda: pasa 'BovedaPublica123!' o 'BovedaReservada123!' para cada vista"
+    )
     print(f"  documentos: {documento_repository().count()}")
+    print(f"  bóvedas:    {boveda_repository().count()}")
+    integro, _ = auditoria_repository().verificar_cadena()
+    print(
+        f"  auditoría:  {auditoria_repository().count()} registros "
+        f"(cadena {'íntegra' if integro else 'ALTERADA'})"
+    )
 
 
 if __name__ == "__main__":

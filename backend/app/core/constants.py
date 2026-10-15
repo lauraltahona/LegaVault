@@ -80,6 +80,12 @@ class TipoAlerta(str, Enum):
     DOCUMENTO_CARGADO = "documento_cargado"
     DOCUMENTO_DESCARGADO = "documento_descargado"
     DOCUMENTO_ELIMINADO = "documento_eliminado"
+    BOVEDA_CREADA = "boveda_creada"
+    BOVEDA_ABIERTA = "boveda_abierta"
+    BOVEDA_ACCESO_FALLIDO = "boveda_acceso_fallido"
+    BOVEDA_EDITADA = "boveda_editada"
+    BOVEDA_CREDENCIALES = "boveda_credenciales"
+    BOVEDA_ELIMINADA = "boveda_eliminada"
 
 
 class SeveridadAlerta(str, Enum):
@@ -90,5 +96,58 @@ class SeveridadAlerta(str, Enum):
     CRITICA = "critica"
 
 
+class ResultadoAuditoria(str, Enum):
+    """Resultado de una acción registrada en la auditoría (Módulo 6)."""
+
+    OK = "ok"
+    DENEGADO = "denegado"
+    ERROR = "error"
+
+
+class AccionAuditoria(str, Enum):
+    """Acciones auditables del sistema (Módulo 6).
+
+    A diferencia de :class:`TipoAlerta` (que alimenta el panel de seguridad), la
+    auditoría registra **todas** las acciones relevantes, incluidas las lecturas
+    sensibles y los intentos denegados.
+    """
+
+    LOGIN = "login"
+    LOGIN_FALLIDO = "login_fallido"
+    LOGOUT = "logout"
+    CUENTA_BLOQUEADA = "cuenta_bloqueada"
+    ACCESO_DENEGADO = "acceso_denegado"
+    USUARIO_CREADO = "usuario_creado"
+    USUARIO_EDITADO = "usuario_editado"
+    USUARIO_ESTADO = "usuario_estado"
+    USUARIO_PASSWORD = "usuario_password"
+    USUARIO_DESBLOQUEADO = "usuario_desbloqueado"
+    EXPEDIENTE_CREADO = "expediente_creado"
+    EXPEDIENTE_EDITADO = "expediente_editado"
+    EXPEDIENTE_ARCHIVADO = "expediente_archivado"
+    DOCUMENTO_CARGADO = "documento_cargado"
+    DOCUMENTO_DESCARGADO = "documento_descargado"
+    DOCUMENTO_ELIMINADO = "documento_eliminado"
+    BOVEDA_CREADA = "boveda_creada"
+    BOVEDA_ABIERTA = "boveda_abierta"
+    BOVEDA_ACCESO_FALLIDO = "boveda_acceso_fallido"
+    BOVEDA_EDITADA = "boveda_editada"
+    BOVEDA_CREDENCIALES = "boveda_credenciales"
+    BOVEDA_ELIMINADA = "boveda_eliminada"
+    EXPEDIENTE_PERMISOS = "expediente_permisos"
+    AUDITORIA_VERIFICADA = "auditoria_verificada"
+
+
 # Roles con permiso para crear/gestionar expedientes (Módulos 2 y 5).
 ROLES_GESTION_EXPEDIENTES = (Rol.ADMIN, Rol.ABOGADO)
+
+# Roles con permiso para cargar documentos (Módulo 3). El asistente puede cargar
+# documentos no confidenciales en expedientes a los que tiene acceso.
+ROLES_CARGA_DOCUMENTOS = (Rol.ADMIN, Rol.ABOGADO, Rol.ASISTENTE)
+
+# Acciones contempladas por la matriz de permisos granular por expediente (Módulo 5).
+# El orden se usa en la interfaz de administración de permisos.
+ACCIONES_PERMISO = ("leer", "cargar", "descargar", "editar", "eliminar")
+
+# Roles con permiso para crear bóvedas cifradas (Módulo 4).
+ROLES_GESTION_BOVEDA = (Rol.ADMIN, Rol.ABOGADO)

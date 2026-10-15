@@ -11,11 +11,15 @@ from functools import lru_cache
 
 from app.core.config import settings
 from app.repositories.alerta_repository import AlertaRepository
+from app.repositories.auditoria_repository import AuditoriaRepository
+from app.repositories.boveda_repository import BovedaRepository
 from app.repositories.documento_repository import DocumentoRepository
 from app.repositories.expediente_repository import ExpedienteRepository
 from app.repositories.user_repository import UserRepository
 from app.services.alerta_service import AlertaService
+from app.services.auditoria_service import AuditoriaService
 from app.services.auth_service import AuthService
+from app.services.boveda_service import BovedaService
 from app.services.documento_service import DocumentoService
 from app.services.expediente_service import ExpedienteService
 from app.services.user_service import UserService
@@ -42,6 +46,16 @@ def alerta_repository() -> AlertaRepository:
     return AlertaRepository(settings.data_dir / "alertas.json")
 
 
+@lru_cache
+def boveda_repository() -> BovedaRepository:
+    return BovedaRepository(settings.data_dir / "bovedas.json")
+
+
+@lru_cache
+def auditoria_repository() -> AuditoriaRepository:
+    return AuditoriaRepository(settings.data_dir / "auditoria.json")
+
+
 # --- Servicios -----------------------------------------------------------
 @lru_cache
 def alerta_service() -> AlertaService:
@@ -49,20 +63,36 @@ def alerta_service() -> AlertaService:
 
 
 @lru_cache
+def auditoria_service() -> AuditoriaService:
+    return AuditoriaService(auditoria_repository())
+
+
+@lru_cache
 def user_service() -> UserService:
-    return UserService(user_repository(), alerta_service())
+    return UserService(user_repository(), alerta_service(), auditoria_service())
 
 
 @lru_cache
 def auth_service() -> AuthService:
-    return AuthService(user_repository(), alerta_service())
+    return AuthService(user_repository(), alerta_service(), auditoria_service())
 
 
 @lru_cache
 def expediente_service() -> ExpedienteService:
-    return ExpedienteService(expediente_repository(), user_repository(), alerta_service())
+    return ExpedienteService(
+        expediente_repository(), user_repository(), alerta_service(), auditoria_service()
+    )
 
 
 @lru_cache
 def documento_service() -> DocumentoService:
-    return DocumentoService(documento_repository(), expediente_repository(), alerta_service())
+    return DocumentoService(
+        documento_repository(), expediente_repository(), alerta_service(), auditoria_service()
+    )
+
+
+@lru_cache
+def boveda_service() -> BovedaService:
+    return BovedaService(
+        boveda_repository(), expediente_repository(), alerta_service(), auditoria_service()
+    )

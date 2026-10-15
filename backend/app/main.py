@@ -11,7 +11,9 @@ from fastapi.responses import JSONResponse
 
 from app.controllers import (
     alerta_router,
+    auditoria_router,
     auth_router,
+    boveda_router,
     documento_router,
     expediente_router,
     user_router,
@@ -34,7 +36,7 @@ app = FastAPI(
     description=(
         "Sistema seguro de gestión de expedientes jurídicos. "
         "Módulos implementados: autenticación y usuarios, expedientes, "
-        "documentos y alertas de seguridad."
+        "documentos, bóveda cifrada de doble fondo, auditoría y alertas de seguridad."
     ),
     lifespan=lifespan,
 )
@@ -73,5 +75,13 @@ def health() -> dict[str, str]:
     return {"estado": "ok"}
 
 
-for _router in (auth_router, user_router, expediente_router, documento_router, alerta_router):
+for _router in (
+    auth_router,
+    user_router,
+    expediente_router,
+    documento_router,
+    boveda_router,
+    alerta_router,
+    auditoria_router,
+):
     app.include_router(_router, prefix=settings.api_prefix)

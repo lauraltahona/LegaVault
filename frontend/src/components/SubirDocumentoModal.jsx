@@ -3,6 +3,7 @@ import { useState } from 'react'
 import Aviso from './Aviso.jsx'
 import Modal from './Modal.jsx'
 import { cargarDocumento } from '../api/documentos.js'
+import { useAuth } from '../context/AuthContext.jsx'
 import { NIVELES_SENSIBILIDAD, TIPOS_DOCUMENTO, opciones } from '../constants.js'
 
 /** Formulario modal para subir un documento a un expediente (Módulo 3). */
@@ -12,6 +13,11 @@ export default function SubirDocumentoModal({
   onCerrar,
   onSubido,
 }) {
+  const { usuario } = useAuth()
+  const esAsistente = usuario?.rol === 'asistente'
+  const niveles = esAsistente
+    ? opciones(NIVELES_SENSIBILIDAD).filter(({ valor }) => valor !== 'confidencial')
+    : opciones(NIVELES_SENSIBILIDAD)
   const [campos, setCampos] = useState({
     expediente_id: expedienteId ?? '',
     tipo: 'contrato',
@@ -92,7 +98,7 @@ export default function SubirDocumentoModal({
               value={campos.nivel_sensibilidad}
               onChange={(e) => setCampos({ ...campos, nivel_sensibilidad: e.target.value })}
             >
-              {opciones(NIVELES_SENSIBILIDAD).map(({ valor, etiqueta }) => (
+              {niveles.map(({ valor, etiqueta }) => (
                 <option key={valor} value={valor}>
                   {etiqueta}
                 </option>
@@ -116,8 +122,9 @@ export default function SubirDocumentoModal({
         </label>
 
         <p className="nota">
-          Los documentos marcados como <strong>confidencial</strong> no estarán disponibles para el
-          rol de asistente jurídico.
+          {esAsistente
+            ? 'Como asistente jurídico solo puede cargar documentos públicos o internos; los confidenciales los gestiona un abogado o un administrador.'
+            : 'Los documentos marcados como confidencial no estarán disponibles para el rol de asistente jurídico.'}
         </p>
 
         <div className="formulario-acciones">

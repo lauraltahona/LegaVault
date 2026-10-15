@@ -61,6 +61,9 @@ export function AuthProvider({ children }) {
       logout,
       esAdmin: usuario?.rol === 'admin',
       puedeGestionar: usuario?.rol === 'admin' || usuario?.rol === 'abogado',
+      // Todos los roles autenticados pueden cargar documentos en expedientes
+      // a los que tienen acceso (el asistente no puede marcarlos confidenciales).
+      puedeCargar: ['admin', 'abogado', 'asistente'].includes(usuario?.rol),
     }),
     [usuario, cargando, login, logout],
   )

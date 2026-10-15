@@ -13,6 +13,7 @@ from app.schemas.expediente_schema import (
     ExpedienteCreate,
     ExpedienteResponse,
     ExpedienteUpdate,
+    PermisosUpdate,
 )
 
 router = APIRouter(prefix="/expedientes", tags=["Expedientes"])
@@ -75,3 +76,15 @@ def actualizar(
 )
 def archivar(expediente_id: str, usuario: User = Depends(get_current_user)) -> ExpedienteResponse:
     return _to_response(expediente_service().archivar(expediente_id, usuario))
+
+
+@router.put(
+    "/{expediente_id}/permisos",
+    response_model=ExpedienteResponse,
+    summary="Actualizar la matriz de permisos del expediente (solo admin/responsable)",
+)
+def actualizar_permisos(
+    expediente_id: str, payload: PermisosUpdate, usuario: User = Depends(get_current_user)
+) -> ExpedienteResponse:
+    exp = expediente_service().actualizar_permisos(expediente_id, payload.permisos, usuario)
+    return _to_response(exp)

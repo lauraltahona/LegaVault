@@ -7,8 +7,10 @@ const enlaces = [
   { to: '/', etiqueta: 'Panel', icono: '▤', exacto: true },
   { to: '/expedientes', etiqueta: 'Expedientes', icono: '🗂' },
   { to: '/documentos', etiqueta: 'Documentos', icono: '📄' },
+  { to: '/boveda', etiqueta: 'Bóveda', icono: '🔐' },
   { to: '/usuarios', etiqueta: 'Usuarios', icono: '👤', soloAdmin: true },
   { to: '/alertas', etiqueta: 'Alertas', icono: '🔔', soloAdmin: true },
+  { to: '/auditoria', etiqueta: 'Auditoría', icono: '📜', soloAdmin: true },
 ]
 
 export default function Layout() {

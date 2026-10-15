@@ -198,6 +198,138 @@ def main() -> int:
     )
     comprobar(descarga.status_code == 200, "Descargar documento autorizado")
 
+    # --- Módulo 5: permisos granulares por expediente ---
+    comprobar(
+        cliente.put(
+            f"/api/expedientes/{expediente_id}",
+            headers=cabecera(token_asistente),
+            json={"asunto": "Intento del asistente"},
+        ).status_code == 403,
+        "El asistente autorizado no puede editar el expediente (403)",
+    )
+    conceder = cliente.put(
+        f"/api/expedientes/{expediente_id}/permisos",
+        headers=cabecera(token_abogado),
+        json={"permisos": {asistente["id"]: {"editar": True}}},
+    )
+    comprobar(conceder.status_code == 200, "El responsable administra la matriz de permisos")
+    comprobar(
+        conceder.json()["permisos"][asistente["id"]]["editar"] is True,
+        "La matriz concede 'editar' al asistente",
+    )
+    comprobar(
+        cliente.put(
+            f"/api/expedientes/{expediente_id}",
+            headers=cabecera(token_asistente),
+            json={"asunto": "Edición autorizada"},
+        ).status_code == 200,
+        "Con el permiso concedido el asistente edita el expediente",
+    )
+    comprobar(
+        cliente.put(
+            f"/api/expedientes/{expediente_id}/permisos",
+            headers=cabecera(token_asistente),
+            json={"permisos": {asistente["id"]: {"editar": True}}},
+        ).status_code == 403,
+        "Un usuario autorizado no administra la matriz de permisos (403)",
+    )
+    comprobar(
+        cliente.put(
+            f"/api/expedientes/{expediente_id}/permisos",
+            headers=cabecera(token_abogado),
+            json={"permisos": {"usuario-inexistente": {"leer": True}}},
+        ).status_code == 422,
+        "La matriz rechaza usuarios no autorizados (422)",
+    )
+
+    # --- Módulo 4: bóveda cifrada de doble fondo ---
+    PW_VISIBLE = "BovedaVisible123!"
+    PW_RESERVADA = "BovedaReservada123!"
+    boveda = cliente.post(
+        "/api/bovedas",
+        headers=cabecera(token_abogado),
+        json={
+            "nombre": "Reserva estratégica (smoke)",
+            "expediente_id": expediente_id,
+            "password_visible": PW_VISIBLE,
+            "password_confidencial": PW_RESERVADA,
+            "contenido_visible": "Contenido principal de la bóveda.",
+            "contenido_confidencial": "Contenido reservado de la bóveda.",
+        },
+    )
+    comprobar(boveda.status_code == 201, "Crear bóveda de doble fondo")
+    boveda_id = boveda.json()["id"]
+    comprobar(
+        not ({"vistas", "salt", "nonce", "datos", "password"} & set(boveda.json())),
+        "La bóveda no expone material cifrado ni credenciales",
+    )
+
+    vista_visible = cliente.post(
+        f"/api/bovedas/{boveda_id}/desbloquear",
+        headers=cabecera(token_abogado),
+        json={"password": PW_VISIBLE},
+    )
+    vista_reservada = cliente.post(
+        f"/api/bovedas/{boveda_id}/desbloquear",
+        headers=cabecera(token_abogado),
+        json={"password": PW_RESERVADA},
+    )
+    comprobar(vista_visible.status_code == 200, "Desbloquear la vista principal")
+    comprobar(
+        [e["contenido"] for e in vista_visible.json()["entradas"]]
+        == ["Contenido principal de la bóveda."],
+        "La vista principal devuelve su propio contenido",
+    )
+    comprobar(
+        [e["contenido"] for e in vista_reservada.json()["entradas"]]
+        == ["Contenido reservado de la bóveda."],
+        "La vista reservada devuelve un contenido distinto (doble fondo)",
+    )
+    comprobar(
+        cliente.post(
+            f"/api/bovedas/{boveda_id}/desbloquear",
+            headers=cabecera(token_abogado),
+            json={"password": "clave incorrecta"},
+        ).status_code
+        == 401,
+        "Contraseña incorrecta devuelve 401",
+    )
+    comprobar(
+        cliente.post(
+            f"/api/bovedas/{boveda_id}/desbloquear",
+            headers=cabecera(token_asistente),
+            json={"password": PW_VISIBLE},
+        ).status_code
+        == 200,
+        "El asistente autorizado en el expediente puede desbloquear",
+    )
+    comprobar(
+        cliente.post(
+            "/api/bovedas",
+            headers=cabecera(token_asistente),
+            json={
+                "nombre": "No permitida",
+                "password_visible": PW_VISIBLE,
+                "password_confidencial": PW_RESERVADA,
+            },
+        ).status_code
+        == 403,
+        "El asistente no puede crear bóvedas (403)",
+    )
+    comprobar(
+        cliente.post(
+            "/api/bovedas",
+            headers=cabecera(token_abogado),
+            json={
+                "nombre": "Contraseñas repetidas",
+                "password_visible": PW_VISIBLE,
+                "password_confidencial": PW_VISIBLE,
+            },
+        ).status_code
+        == 422,
+        "Las dos contraseñas deben ser diferentes (422)",
+    )
+
     # --- Módulo 7: bloqueo y alertas ---
     for _ in range(3):
         login("abogado.smoke", "mala")
@@ -225,6 +357,33 @@ def main() -> int:
     )
     comprobar(desbloqueo.status_code == 200, "El administrador desbloquea la cuenta")
     comprobar(login("abogado.smoke", "Abogado123!").status_code == 200, "La cuenta desbloqueada puede entrar")
+
+    # --- Módulo 6: auditoría inalterable ---
+    registros = cliente.get("/api/auditoria", headers=cabecera(token_admin))
+    comprobar(registros.status_code == 200, "El administrador consulta la auditoría")
+    acciones = {registro["accion"] for registro in registros.json()}
+    comprobar("login" in acciones, "La auditoría registra los inicios de sesión")
+    comprobar("boveda_creada" in acciones, "La auditoría registra las acciones de bóveda")
+    comprobar(
+        cliente.get("/api/auditoria", headers=cabecera(token_asistente)).status_code == 403,
+        "Un usuario no administrador no puede ver la auditoría (403)",
+    )
+    comprobar(
+        all(len(registro["hash_actual"]) == 64 for registro in registros.json()),
+        "Cada registro de auditoría lleva su hash de encadenado",
+    )
+    verificacion = cliente.get("/api/auditoria/verificar", headers=cabecera(token_admin))
+    comprobar(
+        verificacion.status_code == 200 and verificacion.json()["integro"] is True,
+        "La cadena de auditoría es íntegra",
+    )
+    resumen_auditoria = cliente.get(
+        "/api/auditoria/resumen", headers=cabecera(token_admin)
+    ).json()
+    comprobar(
+        set(resumen_auditoria["por_resultado"]) == {"ok", "denegado", "error"},
+        "El resumen de auditoría clasifica por resultado",
+    )
 
     # --- Cierre de sesión ---
     comprobar(

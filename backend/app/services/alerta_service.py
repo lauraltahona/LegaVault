@@ -29,6 +29,12 @@ _DESCRIPCIONES: dict[TipoAlerta, str] = {
     TipoAlerta.DOCUMENTO_CARGADO: "Documento cargado.",
     TipoAlerta.DOCUMENTO_DESCARGADO: "Documento descargado.",
     TipoAlerta.DOCUMENTO_ELIMINADO: "Documento eliminado.",
+    TipoAlerta.BOVEDA_CREADA: "Bóveda cifrada creada.",
+    TipoAlerta.BOVEDA_ABIERTA: "Bóveda desbloqueada correctamente.",
+    TipoAlerta.BOVEDA_ACCESO_FALLIDO: "Intento fallido de abrir una bóveda.",
+    TipoAlerta.BOVEDA_EDITADA: "Contenido de bóveda modificado.",
+    TipoAlerta.BOVEDA_CREDENCIALES: "Credenciales de bóveda actualizadas.",
+    TipoAlerta.BOVEDA_ELIMINADA: "Bóveda eliminada.",
 }
 
 # Severidad por defecto según el tipo de evento.
@@ -38,6 +44,9 @@ _SEVERIDAD_POR_DEFECTO: dict[TipoAlerta, SeveridadAlerta] = {
     TipoAlerta.ACCESO_DENEGADO: SeveridadAlerta.ADVERTENCIA,
     TipoAlerta.DOCUMENTO_ELIMINADO: SeveridadAlerta.ADVERTENCIA,
     TipoAlerta.USUARIO_DESACTIVADO: SeveridadAlerta.ADVERTENCIA,
+    TipoAlerta.BOVEDA_ABIERTA: SeveridadAlerta.ADVERTENCIA,
+    TipoAlerta.BOVEDA_ACCESO_FALLIDO: SeveridadAlerta.ADVERTENCIA,
+    TipoAlerta.BOVEDA_ELIMINADA: SeveridadAlerta.ADVERTENCIA,
 }
 
 

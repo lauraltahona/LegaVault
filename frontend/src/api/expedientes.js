@@ -10,3 +10,6 @@ export const actualizarExpediente = (id, datos) =>
   apiFetch(`/expedientes/${id}`, { method: 'PUT', body: datos })
 
 export const archivarExpediente = (id) => apiFetch(`/expedientes/${id}/archivar`, { method: 'PATCH' })
+
+export const actualizarPermisos = (id, permisos) =>
+  apiFetch(`/expedientes/${id}/permisos`, { method: 'PUT', body: { permisos } })

@@ -13,7 +13,7 @@ import {
 } from '../constants.js'
 
 export default function DocumentosPage() {
-  const { usuario, puedeGestionar } = useAuth()
+  const { usuario, puedeCargar } = useAuth()
   const [documentos, setDocumentos] = useState([])
   const [expedientes, setExpedientes] = useState([])
   const [filtros, setFiltros] = useState({ q: '', expediente_id: '', tipo: '', nivel_sensibilidad: '' })
@@ -76,7 +76,7 @@ export default function DocumentosPage() {
             Busque por nombre, categoría o expediente. Solo se muestran los documentos autorizados.
           </p>
         </div>
-        {puedeGestionar && (
+        {puedeCargar && (
           <button type="button" className="boton boton-primario" onClick={() => setSubiendo(true)}>
             + Cargar documento
           </button>

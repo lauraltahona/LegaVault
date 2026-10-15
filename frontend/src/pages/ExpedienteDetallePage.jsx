@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 
 import Aviso from '../components/Aviso.jsx'
 import Insignia, { tonoEstado } from '../components/Insignia.jsx'
+import PermisosExpediente from '../components/PermisosExpediente.jsx'
 import SubirDocumentoModal from '../components/SubirDocumentoModal.jsx'
 import TablaDocumentos from '../components/TablaDocumentos.jsx'
 import { descargarDocumento, eliminarDocumento, listarDocumentos } from '../api/documentos.js'
@@ -13,7 +14,7 @@ import { etiqueta, fechaHora } from '../utils/format.js'
 
 export default function ExpedienteDetallePage() {
   const { id } = useParams()
-  const { usuario, puedeGestionar } = useAuth()
+  const { usuario, puedeCargar } = useAuth()
   const [expediente, setExpediente] = useState(null)
   const [documentos, setDocumentos] = useState([])
   const [subiendo, setSubiendo] = useState(false)
@@ -74,6 +75,17 @@ export default function ExpedienteDetallePage() {
     )
   }
 
+  const esResponsable = expediente.abogado_responsable_id === usuario.id
+  const puedeGestionarExp = usuario.rol === 'admin' || esResponsable
+  const permisosPropios = expediente.permisos?.[usuario.id] ?? {}
+  const permisoEliminar = permisosPropios.eliminar === true
+  const puedeCargarAqui = puedeCargar && permisosPropios.cargar !== false
+  const puedeBorrarDocumento = (documento) =>
+    usuario.rol === 'admin' ||
+    esResponsable ||
+    permisoEliminar ||
+    documento.subido_por_id === usuario.id
+
   return (
     <div className="pagina">
       <Link className="enlace" to="/expedientes">
@@ -120,7 +132,7 @@ export default function ExpedienteDetallePage() {
       <section className="panel">
         <div className="panel-cabecera">
           <h2>Documentos ({documentos.length})</h2>
-          {puedeGestionar && (
+          {puedeCargarAqui && (
             <button type="button" className="boton boton-primario" onClick={() => setSubiendo(true)}>
               + Cargar documento
             </button>
@@ -130,9 +142,13 @@ export default function ExpedienteDetallePage() {
           documentos={documentos}
           onDescargar={descargar}
           onEliminar={eliminar}
-          puedeEliminar={(documento) => usuario.rol === 'admin' || documento.subido_por_id === usuario.id}
+          puedeEliminar={puedeBorrarDocumento}
         />
       </section>
+
+      {puedeGestionarExp && (
+        <PermisosExpediente expediente={expediente} onActualizado={setExpediente} />
+      )}
 
       {subiendo && (
         <SubirDocumentoModal

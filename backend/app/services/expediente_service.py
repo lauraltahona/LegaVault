@@ -3,25 +3,28 @@
 from __future__ import annotations
 
 from app.core.constants import (
+    AccionAuditoria,
     ROLES_GESTION_EXPEDIENTES,
     EstadoExpediente,
-    Rol,
+    ResultadoAuditoria,
     SeveridadAlerta,
     TipoAlerta,
     TipoProceso,
 )
 from app.core.exceptions import ConflictError, NotFoundError, PermissionDeniedError, ValidationError
 from app.core.validators import validar_texto_obligatorio
-from app.models.expediente import Expediente
+from app.models.expediente import Expediente, normalizar_permisos
 from app.models.user import User
 from app.repositories.expediente_repository import ExpedienteRepository
 from app.repositories.user_repository import UserRepository
 from app.services.alerta_service import AlertaService
+from app.services.auditoria_service import AuditoriaService
 from app.services.permissions import (
     asegurar_acceso_expediente,
     asegurar_rol,
-    es_admin,
     puede_acceder_expediente,
+    puede_administrar_permisos,
+    puede_gestionar_expediente,
 )
 
 _ESTADOS = {estado.value for estado in EstadoExpediente}
@@ -34,10 +37,12 @@ class ExpedienteService:
         repository: ExpedienteRepository,
         user_repository: UserRepository,
         alertas: AlertaService,
+        auditoria: AuditoriaService,
     ) -> None:
         self._repo = repository
         self._users = user_repository
         self._alertas = alertas
+        self._auditoria = auditoria
 
     # --- consultas ------------------------------------------------------
     def listar(
@@ -90,6 +95,13 @@ class ExpedienteService:
             usuario=actor.username,
             usuario_id=actor.id,
         )
+        self._auditoria.registrar(
+            AccionAuditoria.EXPEDIENTE_CREADO,
+            actor=actor,
+            entidad="expediente",
+            entidad_id=exp.id,
+            detalle=f"Expediente '{exp.identificador}' creado.",
+        )
         return exp
 
     def actualizar(self, expediente_id: str, datos: dict, actor: User) -> Expediente:
@@ -118,6 +130,13 @@ class ExpedienteService:
                 exp.usuarios_autorizados.append(responsable.id)
         if "usuarios_autorizados" in datos and datos["usuarios_autorizados"] is not None:
             exp.usuarios_autorizados = self._validar_autorizados(datos["usuarios_autorizados"])
+            # Al retirar un usuario autorizado se descartan sus permisos granulares.
+            exp.permisos = {
+                usuario_id: acciones
+                for usuario_id, acciones in exp.permisos.items()
+                if usuario_id == exp.abogado_responsable_id
+                or usuario_id in exp.usuarios_autorizados
+            }
 
         exp.tocar()
         self._repo.update(exp)
@@ -126,6 +145,13 @@ class ExpedienteService:
             mensaje=f"Expediente '{exp.identificador}' actualizado.",
             usuario=actor.username,
             usuario_id=actor.id,
+        )
+        self._auditoria.registrar(
+            AccionAuditoria.EXPEDIENTE_EDITADO,
+            actor=actor,
+            entidad="expediente",
+            entidad_id=exp.id,
+            detalle=f"Expediente '{exp.identificador}' actualizado.",
         )
         return exp
 
@@ -140,6 +166,42 @@ class ExpedienteService:
             mensaje=f"Expediente '{exp.identificador}' archivado.",
             usuario=actor.username,
             usuario_id=actor.id,
+        )
+        self._auditoria.registrar(
+            AccionAuditoria.EXPEDIENTE_ARCHIVADO,
+            actor=actor,
+            entidad="expediente",
+            entidad_id=exp.id,
+            detalle=f"Expediente '{exp.identificador}' archivado.",
+        )
+        return exp
+
+    def actualizar_permisos(
+        self, expediente_id: str, permisos: dict, actor: User
+    ) -> Expediente:
+        """Reemplaza la matriz de permisos granular del expediente (Módulo 5).
+
+        Solo el administrador o el abogado responsable pueden administrarla.
+        """
+
+        exp = self.obtener(expediente_id, actor)
+        self._asegurar_administracion_permisos(actor, exp)
+
+        exp.permisos = self._validar_permisos(permisos, exp)
+        exp.tocar()
+        self._repo.update(exp)
+        self._alertas.registrar(
+            TipoAlerta.EXPEDIENTE_EDITADO,
+            mensaje=f"Permisos del expediente '{exp.identificador}' actualizados.",
+            usuario=actor.username,
+            usuario_id=actor.id,
+        )
+        self._auditoria.registrar(
+            AccionAuditoria.EXPEDIENTE_PERMISOS,
+            actor=actor,
+            entidad="expediente",
+            entidad_id=exp.id,
+            detalle=f"Permisos del expediente '{exp.identificador}' actualizados.",
         )
         return exp
 
@@ -192,10 +254,34 @@ class ExpedienteService:
                 resultado.append(user.id)
         return resultado
 
+    def _validar_permisos(self, permisos: object, exp: Expediente) -> dict[str, dict[str, bool]]:
+        """Valida que la matriz solo afecte a usuarios autorizados existentes."""
+
+        limpios = normalizar_permisos(permisos)
+        autorizados = set(exp.usuarios_autorizados)
+        for usuario_id in limpios:
+            if usuario_id in (exp.abogado_responsable_id,):
+                # El responsable siempre tiene control total; no se almacena.
+                continue
+            if usuario_id not in autorizados:
+                raise ValidationError(
+                    f"El usuario '{usuario_id}' no está autorizado en el expediente."
+                )
+            user = self._users.get(usuario_id)
+            if user is None or not user.activo:
+                raise ValidationError(
+                    f"El usuario '{usuario_id}' no existe o está inactivo."
+                )
+        return {
+            usuario_id: acciones
+            for usuario_id, acciones in limpios.items()
+            if usuario_id != exp.abogado_responsable_id
+        }
+
     def _asegurar_gestion(self, actor: User, exp: Expediente) -> None:
-        if es_admin(actor):
-            return
-        if actor.rol == Rol.ABOGADO and puede_acceder_expediente(actor, exp):
+        # Pueden editar/archivar el administrador, el abogado responsable o quien
+        # tenga concedida la acción 'editar' en la matriz de permisos (Módulo 5).
+        if puede_gestionar_expediente(actor, exp):
             return
 
         self._alertas.registrar(
@@ -205,7 +291,40 @@ class ExpedienteService:
             usuario=actor.username,
             usuario_id=actor.id,
         )
+        self._auditoria.registrar(
+            AccionAuditoria.ACCESO_DENEGADO,
+            actor=actor,
+            entidad="expediente",
+            entidad_id=exp.id,
+            resultado=ResultadoAuditoria.DENEGADO,
+            detalle=f"Intento de modificar el expediente '{exp.identificador}' sin permisos.",
+        )
         raise PermissionDeniedError("No tiene permisos para modificar este expediente.")
+
+    def _asegurar_administracion_permisos(self, actor: User, exp: Expediente) -> None:
+        # Solo admin o responsable; tener 'editar' no basta (evita escalada).
+        if puede_administrar_permisos(actor, exp):
+            return
+
+        self._alertas.registrar(
+            TipoAlerta.ACCESO_DENEGADO,
+            severidad=SeveridadAlerta.ADVERTENCIA,
+            mensaje=f"Intento de administrar los permisos del expediente '{exp.identificador}'.",
+            usuario=actor.username,
+            usuario_id=actor.id,
+        )
+        self._auditoria.registrar(
+            AccionAuditoria.ACCESO_DENEGADO,
+            actor=actor,
+            entidad="expediente",
+            entidad_id=exp.id,
+            resultado=ResultadoAuditoria.DENEGADO,
+            detalle=(
+                f"Intento de administrar los permisos del expediente "
+                f"'{exp.identificador}' sin permisos."
+            ),
+        )
+        raise PermissionDeniedError("Solo el administrador o el responsable pueden administrar los permisos.")
 
     @staticmethod
     def _normalizar_enum(valor: object, validos: set[str], enum_cls, campo: str):

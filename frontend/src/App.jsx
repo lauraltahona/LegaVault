@@ -4,6 +4,8 @@ import Layout from './components/Layout.jsx'
 import RutaProtegida from './components/RutaProtegida.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'
 import AlertasPage from './pages/AlertasPage.jsx'
+import AuditoriaPage from './pages/AuditoriaPage.jsx'
+import BovedaPage from './pages/BovedaPage.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
 import DocumentosPage from './pages/DocumentosPage.jsx'
 import ExpedienteDetallePage from './pages/ExpedienteDetallePage.jsx'
@@ -29,6 +31,7 @@ export default function App() {
             <Route path="/expedientes" element={<ExpedientesPage />} />
             <Route path="/expedientes/:id" element={<ExpedienteDetallePage />} />
             <Route path="/documentos" element={<DocumentosPage />} />
+            <Route path="/boveda" element={<BovedaPage />} />
             <Route
               path="/usuarios"
               element={
@@ -42,6 +45,14 @@ export default function App() {
               element={
                 <RutaProtegida roles={['admin']}>
                   <AlertasPage />
+                </RutaProtegida>
+              }
+            />
+            <Route
+              path="/auditoria"
+              element={
+                <RutaProtegida roles={['admin']}>
+                  <AuditoriaPage />
                 </RutaProtegida>
               }
             />
