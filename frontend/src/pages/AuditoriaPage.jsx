@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 
 import Aviso from '../components/Aviso.jsx'
+import CadenaAuditoria from '../components/CadenaAuditoria.jsx'
 import Insignia from '../components/Insignia.jsx'
 import { listarAuditoria, resumenAuditoria, verificarAuditoria } from '../api/auditoria.js'
 import { ACCIONES_AUDITORIA, RESULTADOS_AUDITORIA, opciones } from '../constants.js'
-import { etiqueta, fechaHora } from '../utils/format.js'
+import { etiqueta, fechaHora, hashCorto } from '../utils/format.js'
 
 const ENTIDADES = {
   usuario: 'Usuario',
@@ -26,12 +27,11 @@ function tonoResultado(resultado) {
   }
 }
 
-function hashCorto(hash) {
-  return hash ? `${hash.slice(0, 10)}…` : '—'
-}
-
 export default function AuditoriaPage() {
   const [registros, setRegistros] = useState([])
+  // Cadena COMPLETA en orden cronológico (los índices de /auditoria/verificar
+  // se refieren al archivo completo, no a la tabla filtrada).
+  const [cadena, setCadena] = useState([])
   const [resumen, setResumen] = useState(null)
   const [verificacion, setVerificacion] = useState(null)
   const [filtros, setFiltros] = useState({ accion: '', resultado: '', usuario: '', entidad: '' })
@@ -52,11 +52,30 @@ export default function AuditoriaPage() {
     }
   }
 
+  // La cadena se carga completa y en orden ascendente: así la posición de cada
+  // eslabón coincide con el `indice_roto` que devuelve /auditoria/verificar.
+  async function cargarCadena() {
+    try {
+      const completa = await listarAuditoria({})
+      const ordenada = [...completa].sort(
+        (a, b) => new Date(a.creado_en).getTime() - new Date(b.creado_en).getTime(),
+      )
+      setCadena(ordenada)
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
   useEffect(() => {
     const temporizador = setTimeout(cargar, 250)
     return () => clearTimeout(temporizador)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtros.accion, filtros.resultado, filtros.usuario, filtros.entidad])
+
+  useEffect(() => {
+    cargarCadena()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function verificar() {
     setVerificando(true)
@@ -98,10 +117,17 @@ export default function AuditoriaPage() {
         <Aviso tipo={verificacion.integro ? 'ok' : 'error'}>
           {verificacion.integro
             ? `Cadena íntegra: ${verificacion.total} registros verificados correctamente.`
-            : `¡ALERTA! La cadena está alterada en el registro #${verificacion.indice_roto}. ` +
-              'El archivo de auditoría fue modificado.'}
+            : `¡ALERTA! La cadena está rota en el eslabón #${verificacion.indice_roto + 1}. ` +
+              'El archivo de auditoría fue modificado; nada de lo que sigue es confiable.'}
         </Aviso>
       )}
+
+      <CadenaAuditoria
+        registros={cadena}
+        verificacion={verificacion}
+        verificando={verificando}
+        onVerificar={verificar}
+      />
 
       <section className="tarjetas">
         {tarjetas.map((tarjeta) => (

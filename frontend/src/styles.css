@@ -954,6 +954,220 @@ textarea {
   margin-top: 4px;
 }
 
+/* ---------- Cadena de auditoría animada — mejora #7 ---------- */
+.cadena-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cadena-titulo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cadena {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Eslabón: tarjeta con borde izquierdo de color según su estado. */
+.eslabon {
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  border-left: 4px solid var(--borde);
+  border-radius: var(--radio);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: background 0.3s ease, border-color 0.3s ease;
+  animation: eslabon-entra 0.35s ease both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+
+@keyframes eslabon-entra {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.eslabon-genesis {
+  border-left-color: var(--azul-claro);
+  background: var(--azul-suave);
+}
+
+.eslabon-cabecera {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.eslabon-numero {
+  font-weight: 700;
+  font-family: 'Consolas', 'Courier New', monospace;
+  color: var(--azul);
+}
+
+.eslabon-meta {
+  color: var(--texto-suave);
+  font-size: 12px;
+}
+
+.eslabon-hash {
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 0.78rem;
+  color: #475569;
+  overflow-wrap: anywhere;
+}
+
+.hash-etiqueta {
+  display: inline-block;
+  min-width: 58px;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--texto-suave);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+/* Conector entre eslabones: muestra el hash que enlaza y su verificación. */
+.eslabon-conector {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0 3px 20px;
+  font-size: 11.5px;
+  color: var(--texto-suave);
+}
+
+.conector-hash {
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.conector-flecha {
+  font-size: 13px;
+  line-height: 1;
+}
+
+.conector-ok {
+  color: var(--verde);
+  font-weight: 600;
+}
+
+.conector-roto {
+  color: var(--rojo);
+  font-weight: 700;
+}
+
+.conector-alterado {
+  color: var(--ambar);
+  font-weight: 600;
+}
+
+/* Estados de los eslabones tras verificar. */
+.eslabon-pendiente {
+  border-left-color: var(--borde);
+  opacity: 0.85;
+}
+
+.eslabon-barriendo {
+  border-left-color: var(--azul-claro);
+  background: var(--azul-suave);
+}
+
+.eslabon-ok {
+  border-left-color: var(--verde);
+}
+
+.eslabon-roto {
+  border-left-color: var(--rojo);
+  background: var(--rojo-suave);
+  border-color: #f0c2c7;
+  animation: eslabon-latido 1.4s ease-in-out infinite;
+}
+
+@keyframes eslabon-latido {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(176, 42, 55, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(176, 42, 55, 0);
+  }
+}
+
+.eslabon-alterado {
+  border-left-color: var(--ambar);
+  background: var(--ambar-suave);
+  opacity: 0.9;
+}
+
+.cadena-pie {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.cadena-estado {
+  margin: 0;
+  color: var(--texto-suave);
+  font-size: 13px;
+}
+
+.cadena-ok {
+  color: var(--verde);
+}
+
+.cadena-roto {
+  color: var(--rojo);
+}
+
+.cadena-leyenda {
+  display: flex;
+  gap: 12px;
+  font-size: 11.5px;
+}
+
+.leyenda-ok {
+  color: var(--verde);
+}
+
+.leyenda-roto {
+  color: var(--rojo);
+}
+
+.leyenda-alterado {
+  color: var(--ambar);
+}
+
+.cadena-expandir {
+  align-self: flex-start;
+}
+
+/* La animación se omite si el usuario pide reducir el movimiento. */
+@media (prefers-reduced-motion: reduce) {
+  .eslabon,
+  .eslabon-roto {
+    animation: none;
+  }
+}
+
 /* ---------- Responsive ---------- */
 @media (max-width: 780px) {
   .app-shell {

@@ -30,3 +30,16 @@ export function tamanoArchivo(bytes) {
 export function etiqueta(mapa, clave) {
   return mapa?.[clave] ?? clave ?? '—'
 }
+
+/**
+ * Hash truncado para mostrar en tablas y cadenas: `abcdef12…`.
+ * Con `cola > 0` también se muestran los últimos caracteres
+ * (`abcdef12…12ab34`), útil para la cadena de auditoría donde se
+ * quiere ver que el hash de un eslabón es el «hash anterior» del siguiente.
+ */
+export function hashCorto(hash, cabeza = 10, cola = 0) {
+  if (!hash) return '—'
+  const inicio = hash.slice(0, cabeza)
+  const final = cola > 0 ? hash.slice(-cola) : ''
+  return final ? `${inicio}…${final}` : `${inicio}…`
+}

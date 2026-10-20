@@ -17,7 +17,7 @@ seguridad.
 | **3. Documentos** | Carga, consulta y descarga autorizada; clasificación por tipo y sensibilidad; búsqueda por nombre/categoría/expediente; **tipo real validado al cargar por magic bytes** (lista blanca `txt/csv/png/jpg/pdf/zip`, configurable con `LEGALVAULT_EXTENSIONES_PERMITIDAS`): una extensión que no coincide con el contenido se rechaza con **422** y genera la alerta `documento_rechazado` más su registro denegado en auditoría; integridad por SHA-256 **re-verificada en cada descarga y bajo demanda** (`GET /documentos/{id}/verificar-integridad`, botón "Verificar" en la tabla): si el archivo en disco no coincide, la descarga se bloquea con **409** y se genera la alerta crítica `documento_corrupto` más su registro en auditoría. | ✅ |
 | **4. Bóveda cifrada de doble fondo** | Contenido cifrado con **AES-256-GCM** y clave derivada con **scrypt**. Cada bóveda guarda **dos vistas independientes**: cada contraseña abre un contenido distinto, sin que la estructura almacenada revele cuál es cuál (negación plausible). | ✅ |
 | **5. Permisos avanzados por expediente** | Matriz granular por usuario y acción (`leer`, `cargar`, `descargar`, `editar`, `eliminar`) que refina los permisos por defecto según rol y acceso; administrada por el administrador o el abogado responsable. | ✅ |
-| **6. Auditoría formal** | Registro local **append-only** de todas las acciones relevantes (autenticación, CRUD, accesos denegados y acciones de bóveda), encadenado con **SHA-256** y verificable desde la interfaz; cualquier edición manual del archivo es detectable. | ✅ |
+| **6. Auditoría formal** | Registro local **append-only** de todas las acciones relevantes (autenticación, CRUD, accesos denegados y acciones de bóveda), encadenado con **SHA-256** y verificable desde la interfaz; cualquier edición manual del archivo es detectable, y la página de auditoría **visualiza la cadena animada** (eslabones con hash truncado, barrido de verificación y resaltado del primer eslabón roto). | ✅ |
 | **7. Alertas de seguridad** | Conteo de intentos fallidos, bloqueo temporal configurable, panel de alertas para el administrador (fecha, usuario y tipo, sin secretos). | ✅ |
 
 Cada expediente admite una **matriz de permisos** (módulo 5) que refina, por
@@ -144,14 +144,21 @@ Pruebas de interfaz con **Vitest + React Testing Library** (`frontend/tests/`):
 la página 404 y el enrutamiento (con y sin sesión, más regresión de las rutas
 conocidas), el sistema de toasts (apertura, cierre manual, auto-cierre,
 deduplicación y límite visible), los avisos globales del cliente HTTP (sesión
-expirada, backend inaccesible con mensaje amigable y error 5xx) y el bus de
-notificaciones.
+expirada, backend inaccesible con mensaje amigable y error 5xx), el bus de
+notificaciones y la **cadena de auditoría animada**
+(`frontend/tests/cadenaAuditoria.test.jsx`: lógica de estados por eslabón, orden
+cronológico, barrido de verificación, resaltado del primer eslabón roto y de los
+posteriores como no confiables, modo de movimiento reducido, plegado de cadenas
+largas, fallo de la verificación y regresión de la tabla).
 
 ```powershell
 cd frontend
 npm install
 npm run test
 ```
+
+> **Mejora #7 del plan (*Visualización animada de la cadena de auditoría*) ya
+> implementada:** solo frontend, sin cambios en el backend ni en los datos.
 
 ## Configuración
 
@@ -204,6 +211,11 @@ Variables de entorno (ver `backend/.env.example`):
   `GET /api/auditoria/verificar` recalcula la cadena completa y señala el primer
   registro alterado, por lo que editar, insertar, reordenar o borrar líneas del
   archivo a mano es detectable. Solo el administrador puede consultarla.
+  La página de auditoría **visualiza la cadena eslabón a eslabón** (hash anterior
+  y hash propio truncados por ambos extremos): al pulsar "Verificar cadena" un
+  barrido recorre los eslabones y pinta el resultado —verde los válidos, **rojo
+  el primer eslabón roto** y ámbar todo lo posterior (ya no confiable)—, con la
+  animación desactivada si el sistema pide reducir el movimiento.
 - **Permisos avanzados (Módulo 5):** cada expediente guarda una matriz
   `{usuario_id: {leer, cargar, descargar, editar, eliminar}}` que **refina** los
   permisos por defecto (el usuario autorizado puede leer/cargar/descargar; el
