@@ -307,7 +307,7 @@ class BovedaService:
             resultado=ResultadoAuditoria.DENEGADO,
             detalle=f"Intento fallido de abrir la bóveda '{boveda.nombre}'.",
         )
-        raise AuthenticationError("Contraseña de bóveda incorrecta.")
+        raise ValidationError("Contraseña de bóveda incorrecta.")
 
     def _validar_expediente(self, expediente_id: object, actor: User) -> str:
         identificador = str(expediente_id or "").strip()
