@@ -6,6 +6,7 @@ import CrearBovedaModal from '../components/CrearBovedaModal.jsx'
 import { eliminarBoveda, listarBovedas } from '../api/bovedas.js'
 import { listarExpedientes } from '../api/expedientes.js'
 import { useAuth } from '../context/AuthContext.jsx'
+import { itemsDe } from '../utils/paginacion.js'
 
 function formatearFecha(iso) {
   if (!iso) return '—'
@@ -39,7 +40,11 @@ export default function BovedaPage() {
 
   useEffect(() => {
     cargar()
-    listarExpedientes().then(setExpedientes).catch(() => setExpedientes([]))
+    listarExpedientes().then((resp) => {
+      if (Array.isArray(resp)) setExpedientes(resp)
+      else if (resp && Array.isArray(resp.items)) setExpedientes(resp.items)
+      else setExpedientes([])
+    }).catch(() => setExpedientes([]))
   }, [])
 
   async function eliminar(boveda) {

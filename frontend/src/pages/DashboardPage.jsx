@@ -44,8 +44,10 @@ export default function DashboardPage() {
             resumenAuditoria(),
           ])
           setResumen(res)
-          setAlertas(ultimas)
-          setUsuarios(users)
+          // /alertas responde paginado ({items, total, ...}); sin itemsDe,
+          // alertas.map revienta el render y deja el panel en blanco.
+          setAlertas(itemsDe(ultimas))
+          setUsuarios(itemsDe(users))
           setAuditoria(audit)
         }
       } catch (err) {
