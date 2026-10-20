@@ -172,6 +172,7 @@ Variables de entorno (ver `backend/.env.example`):
 | `LEGALVAULT_MINUTOS_TOKEN` | `60` | Caducidad de la sesión. |
 | `LEGALVAULT_MAX_ARCHIVO_MB` | `25` | Tamaño máximo de documento. |
 | `LEGALVAULT_EXTENSIONES_PERMITIDAS` | `.txt,.csv,.png,.jpg,.jpeg,.pdf,.zip` | Lista blanca de extensiones al subir (validación por magic bytes). |
+| `LEGALVAULT_BOVEDA_BUCKET_MB` | `1` | Cubeta de padding de las bóvedas cifradas (escalera 1/5/25 MB). |
 | `LEGALVAULT_DATA_DIR` | `backend/data` | Carpeta de datos JSON. |
 
 ## Roles y permisos
@@ -243,14 +244,17 @@ con capacidad forense avanzada:
 
 - Toda bóveda tiene exactamente dos vistas, por lo que el número de vistas es
   uniforme y no delata un "doble fondo" concreto.
-- No se oculta el **tamaño** aproximado del contenido cifrado (los rellenos
-  criptográficos a un tamaño fijo serían la mejora natural).
+- El **tamaño** del contenido cifrado no se filtra: cada vista se rellena
+  (*padding*) hasta la misma cubeta (por defecto 1 MB, escalera 1/5/25 MB), de
+  modo que **ambas vistas ocupan exactamente los mismos bytes** en disco. Un
+  contenido corto y uno largo son indistinguibles por su tamaño. Aun así, el
+  adversario puede saber que existe una cubeta de 1 MB o 5 MB, no cuánto hay
+  dentro.
 - El nombre y la descripción de la bóveda son metadatos en claro; no deben
   contener información comprometedora.
 
 ## Mejoras futuras
 
 - Módulo 5: permisos avanzados configurables.
-- Relleno a tamaño fijo en las vistas de la bóveda (mejor negación plausible).
 - Base de datos real y almacén persistente para la revocación de tokens.
 - Cifrado en reposo de los documentos y análisis avanzado de alertas.

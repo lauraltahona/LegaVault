@@ -23,6 +23,9 @@ class Boveda(BaseEntity):
     creado_por_id: str = ""
     # Exactamente dos vistas cifradas, sin orden significativo.
     vistas: list[dict] = field(default_factory=list)
+    # Cubeta de padding (mejora #15), en MB. 0 = formato heredado sin padding.
+    # Es la *misma* para las dos vistas, de modo que ambas ocupan igual en disco.
+    bucket_mb: int = 0
     activo: bool = True
 
     @classmethod
@@ -36,5 +39,6 @@ class Boveda(BaseEntity):
             expediente_id=data.get("expediente_id", ""),
             creado_por_id=data.get("creado_por_id", ""),
             vistas=list(data.get("vistas") or []),
+            bucket_mb=int(data.get("bucket_mb") or 0),
             activo=bool(data.get("activo", True)),
         )

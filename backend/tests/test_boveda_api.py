@@ -254,3 +254,52 @@ def test_cada_boveda_tiene_dos_vistas_y_ningun_secreto(crear_boveda):
         assert len(fila["vistas"]) == 2
         for vista in fila["vistas"]:
             assert set(vista) == {"salt", "nonce", "datos"}
+
+
+# --- padding por cubetas (mejora #15) ------------------------------------
+def test_ambas_vistas_ocupan_exactamente_lo_mismo(crear_boveda):
+    crear_boveda(contenido_visible="Corto.", contenido_confidencial="X" * 5000)
+    filas = json.loads(boveda_repository().path.read_text(encoding="utf-8"))
+    vista_a, vista_b = filas[0]["vistas"]
+    assert len(vista_a["datos"]) == len(vista_b["datos"])
+
+
+def test_la_boveda_persiste_su_bucket(crear_boveda):
+    crear_boveda()
+    filas = json.loads(boveda_repository().path.read_text(encoding="utf-8"))
+    assert filas[0]["bucket_mb"] == 1
+
+
+def test_bucket_mb_no_se_expone_en_la_api(crear_boveda):
+    datos = crear_boveda(bucket_mb=5).json()
+    assert "bucket_mb" not in datos
+
+
+def test_la_respuesta_no_expone_el_bucket_en_el_listado(client, abogado, crear_boveda):
+    crear_boveda()
+    listado = client.get("/api/bovedas", headers=abogado["headers"]).json()
+    assert all("bucket_mb" not in item for item in listado)
+
+
+def test_bucket_invalido_rechazado(crear_boveda):
+    assert crear_boveda(bucket_mb=-1).status_code == 422
+
+
+def test_las_bovedas_antiguas_siguen_abriendo(client, abogado, crear_boveda):
+    """Una bóveda creada sin padding (formato heredado) sigue abriéndose."""
+
+    boveda = crear_boveda(bucket_mb=0).json()
+    resultado = _desbloquear(client, abogado["headers"], boveda["id"], PW_VISIBLE)
+    assert resultado.status_code == 200
+    assert TEXTO_VISIBLE in [e["contenido"] for e in resultado.json()["entradas"]]
+    # Y se sigue editando sin perder contenido.
+    assert (
+        client.post(
+            f"/api/bovedas/{boveda['id']}/entradas",
+            headers=abogado["headers"],
+            json={"titulo": "Nota", "contenido": "Más texto.", "password": PW_VISIBLE},
+        ).status_code
+        == 201
+    )
+    contenido = _desbloquear(client, abogado["headers"], boveda["id"], PW_VISIBLE).json()
+    assert "Más texto." in [e["contenido"] for e in contenido["entradas"]]

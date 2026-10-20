@@ -49,7 +49,7 @@ Cada mejora indica **prioridad** (P0 = alto impacto/bajo esfuerzo, P1 = medio, P
 
 | Mejora | Detalle | Pri. | Enseña |
 | --- | --- | --- | --- |
-| **Paginación real** | `pagina`/`por_pagina` en listados (backend + frontend). Preparado para el crecimiento de datos. | P0 | APIs escalables, coste de O(n) |
+| **Paginación real** ✅ | `pagina`/`por_pagina` en listados (backend + frontend). Preparado para el crecimiento de datos. | P0 | APIs escalables, coste de O(n) |
 | **Historial de cambios (versionado)** | Cada edición guarda un diff en `historial` (quién, cuándo, qué campo cambió). Visible en la ficha del expediente. | P1 | Trazabilidad, inmutabilidad de eventos, complementa la auditoría |
 | **Búsqueda full-text simple** | Índice de tokens en memoria (sin dependencias): normalizar, tokenizar, puntuar. | P2 | Indexación, por qué un `LIKE '%x%'` no escala |
 
@@ -73,7 +73,7 @@ negación plausible si se hace bien.**
 | Mejora | Detalle | Pri. | Enseña |
 | --- | --- | --- | --- |
 | **4.1 Subida de archivos a la bóveda** | Cada vista admite además entradas con **archivo adjunto**. Diseño: el archivo se cifra con AES-256-GCM en **chunks** (nonce derivado del índice de chunk: `nonce = IV_base(8B) ‖ contador(4B)`, nunca repetido) y se guarda como blob en `data/bovedas/{id}/` (NO en base64 dentro del JSON — el JSON solo guarda metadatos: nombre, mime, tamaño, hash del plaintext). El contenido JSON de la vista se cifra igual que hoy y referencia los blobs. Compatibilidad: las bóvedas viezas (solo `{"entradas":[...]}`) se abren igual; se añade un campo `version` al descifrar. | **P0** | Cifrado autenticado en streaming, por qué GCM necesita nonces únicos, separación metadatos/datos |
-| **4.2 Relleno a tamaño fijo (bucket padding)** | **Clave para no romper la negación plausible.** Tamaño máximo por vista configurable (`LEGALVAULT_BOVEDA_BUCKET_MB`, ej. 5 MB). Al guardar, el plaintext se rellena con bytes aleatorios hasta el **bucket** antes de cifrar → ambas vistas ocupan **exactamente lo mismo** en disco. Buckets discretos (1/5/25 MB) evitan revelar tamaños exactos. El relleno se elimina al descifrar (prefijo de longitud). | **P0** | Indistinguibilidad, por qué "el tamaño delata", relleno criptográfico |
+| **4.2 Relleno a tamaño fijo (bucket padding)** ✅ | **Clave para no romper la negación plausible.** Tamaño máximo por vista configurable (`LEGALVAULT_BOVEDA_BUCKET_MB`, ej. 5 MB). Al guardar, el plaintext se rellena con bytes aleatorios hasta el **bucket** antes de cifrar → ambas vistas ocupan **exactamente lo mismo** en disco. Buckets discretos (1/5/25 MB) evitan revelar tamaños exactos. El relleno se elimina al descifrar (prefijo de longitud). | **P0** | Indistinguibilidad, por qué "el tamaño delata", relleno criptográfico |
 | **4.3 Contraseñas que no salen del navegador** | Modo **end-to-end**: derivar la clave con scrypt **en WebCrypto** (`crypto.subtle.deriveBits` con parámetros idénticos) y enviar al servidor solo el ciphertext + salt. El servidor jamás ve la contraseña. Transición: mantener el modo servidor para texto corto y añadir `?e2e=1` o una versión de esquema `v2`; las bóvedas v1 siguen abriendo. | P1 | Cifrado extremo a extremo, "el servidor solo debe ver lo mínimo" (zero-knowledge aproximado) |
 | **4.4 Intentos limitados por bóveda** | Contador de fallos por bóveda (no por usuario) con bloqueo temporal; alerta `BOVEDA_BLOQUEO`. Complementa el bloqueo de cuentas. | P1 | Fuerza bruta, por qué los límites de intentos existen en todo lo que usa contraseñas |
 | **4.5 Exportar/importar bóveda como archivo `.lvault`** | Export de un único archivo autocontenido (manifest + vistas cifradas + blobs) verificable fuera de la app; import reconstruye la bóveda. Perfecto para la demo: "este archivo se ve igual para todos, y solo dos contraseñas lo abren". | P1 | Serialización, portabilidad, y que **la idea original era "un archivo con doble fondo"** — se recupera ese formato exacto |
@@ -413,7 +413,7 @@ en pantalla).
 
 | # | Mejora | Dónde | Nota |
 | --- | --- | --- | --- |
-| 10 | Paginación en listados | Backend + frontend | Mecánico, pero toca muchos endpoints: hacerlo de una vez, no a medias |
+| 10 | Paginación en listados ✅ | Backend + frontend | Mecánico, pero toca muchos endpoints: hacerlo de una vez, no a medias |
 | 11 | Historial de cambios de expedientes | Backend (JSON nuevo) + frontend | Aditivo: archivo nuevo, no toca el modelo existente |
 | 12 | Permisos con caducidad (`hasta`) | Backend + frontend | Campo aditivo con default `null` = comportamiento actual intacto |
 | 13 | Reglas de correlación en alertas | Backend | Aditivo: nuevo servicio que **genera** alertas; no modifica las existentes |
@@ -423,7 +423,7 @@ en pantalla).
 
 | # | Mejora | Esfuerzo | Impacto en la expo | Riesgo |
 | --- | --- | --- | --- | --- |
-| 15 | **Bucket padding en la bóveda** (solo relleno, *sin* archivos aún) | ~4–6 h | ⭐⭐⭐ Responde el "¿y si subo archivos?" con "el tamaño ni siquiera te delata" | Medio: toca `boveda_crypto`/`boveda_service`; **las bóvedas viejas deben seguir abriendo** (migración al vuelo) |
+| 15 | **Bucket padding en la bóveda** (solo relleno, *sin* archivos aún) ✅ | ~4–6 h | ⭐⭐⭐ Responde el "¿y si subo archivos?" con "el tamaño ni siquiera te delata" | Medio: toca `boveda_crypto`/`boveda_service`; **las bóvedas viejas deben seguir abriendo** (migración al vuelo) |
 | 16 | **Firma HMAC de la cadena de auditoría + `scripts/verificar_auditoria.py`** | ~3–5 h | ⭐⭐⭐ "Reescribir todo el log ya no basta, hay una clave fuera del archivo" | Medio-bajo: solo se firman registros nuevos; verificar valida ambos |
 | 17 | **Modo "ver el cifrado"** (endpoint que devuelve el material cifrado de la bóveda a creador/admin, y lo muestra en base64 con salt/nonce resaltados) | ~3–4 h | ⭐⭐⭐ El efecto "no hay texto en claro, mira" es el más fotogénico | Medio: exponer blobs requiere permiso estricto (creador/admin) y jamás la contraseña |
 | 18 | **Retos básicos (3–4) con validación** | ~4–6 h | ⭐⭐ Gamificación visible | Medio-bajo: usa endpoints existentes; progreso en JSON nuevo |

@@ -22,6 +22,9 @@ class BovedaCreate(BaseModel):
     password_confidencial: str = Field(..., min_length=1)
     contenido_visible: str = ""
     contenido_confidencial: str = ""
+    # Cubeta de padding en MB (mejora #15). Si se omite se usa el valor
+    # configurado; 0 desactiva el padding. No se expone en la respuesta.
+    bucket_mb: int | None = Field(default=None, ge=0)
 
 
 class BovedaResponse(BaseModel):

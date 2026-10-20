@@ -98,6 +98,13 @@ class Settings:
     def max_tamano_archivo_bytes(self) -> int:
         return self.max_tamano_archivo_mb * 1024 * 1024
 
+    # --- Bóveda cifrada (Módulo 4, mejora #15) ---
+    # Tamaño de la cubeta de padding. Todas las vistas de una bóveda usan la
+    # misma cubeta para no filtrar información por el tamaño del contenido.
+    boveda_bucket_mb: int = field(
+        default_factory=lambda: _env_int("LEGALVAULT_BOVEDA_BUCKET_MB", 1)
+    )
+
     @property
     def uploads_dir(self) -> Path:
         return self.data_dir / "uploads"

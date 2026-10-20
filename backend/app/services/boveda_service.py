@@ -8,6 +8,10 @@ vista "oculta" (la doble fondo). Como las dos vistas tienen exactamente el mismo
 formato y se almacenan **en orden aleatorio**, quien observe el archivo no puede
 saber cuál es cuál ni que existe un segundo contenido.
 
+Además, ambas vistas se rellenan (*padding*, mejora #15) hasta la **misma
+cubeta** (``bucket_mb``), de forma que ocupan exactamente los mismos bytes: el
+tamaño del archivo no delata el volumen real de cada fondo.
+
 Garantías
 ---------
 - El contenido se cifra siempre con AES-256-GCM (confidencialidad + integridad)
@@ -21,7 +25,8 @@ from __future__ import annotations
 
 import random
 
-from app.core.boveda_crypto import cifrar, descifrar, es_vista_valida
+from app.core.boveda_crypto import calcular_bucket, cifrar, descifrar, es_vista_valida
+from app.core.config import settings
 from app.core.constants import (
     ROLES_GESTION_BOVEDA,
     AccionAuditoria,
@@ -93,9 +98,14 @@ class BovedaService:
 
         expediente_id = self._validar_expediente(datos.get("expediente_id"), actor)
 
+        # Cubeta de padding (mejora #15), idéntica para las dos vistas.
+        bucket_mb = self._bucket_solicitado(datos.get("bucket_mb"))
+
+        contenido_visible = self._contenido_inicial(datos.get("contenido_visible"))
+        contenido_confidencial = self._contenido_inicial(datos.get("contenido_confidencial"))
         vistas = [
-            cifrar(self._contenido_inicial(datos.get("contenido_visible")), password_visible),
-            cifrar(self._contenido_inicial(datos.get("contenido_confidencial")), password_confidencial),
+            cifrar(contenido_visible, password_visible, bucket_mb=bucket_mb),
+            cifrar(contenido_confidencial, password_confidencial, bucket_mb=bucket_mb),
         ]
         # El orden se aleatoriza para no revelar qué vista es "principal" u "oculta".
         random.SystemRandom().shuffle(vistas)
@@ -107,6 +117,7 @@ class BovedaService:
             expediente_id=expediente_id,
             creado_por_id=actor.id,
             vistas=vistas,
+            bucket_mb=bucket_mb,
         )
         self._repo.add(boveda)
         self._alertas.registrar(
@@ -162,7 +173,7 @@ class BovedaService:
         entrada = self._nueva_entrada(titulo, texto)
         entradas.append(entrada)
 
-        boveda.vistas[indice] = cifrar(contenido, password)
+        boveda.vistas[indice] = self._cifrar_para(boveda, contenido, password)
         boveda.tocar()
         self._repo.update(boveda)
         self._alertas.registrar(
@@ -195,7 +206,7 @@ class BovedaService:
             if es_vista_valida(boveda.vistas[otro]) and descifrar(boveda.vistas[otro], password_nueva) is not None:
                 raise ValidationError("La nueva contraseña coincide con la de la otra vista.")
 
-        boveda.vistas[indice] = cifrar(contenido, password_nueva)
+        boveda.vistas[indice] = self._cifrar_para(boveda, contenido, password_nueva)
         boveda.tocar()
         self._repo.update(boveda)
         self._alertas.registrar(
@@ -316,6 +327,35 @@ class BovedaService:
         if limpio:
             entradas.append(BovedaService._nueva_entrada("Contenido inicial", limpio[:_MAX_TEXTO]))
         return {"entradas": entradas}
+
+    @staticmethod
+    def _bucket_solicitado(valor: object) -> int:
+        """Cubeta pedida al crear la bóveda (0 desactiva el padding).
+
+        Si el cliente no indica nada se usa el valor configurado
+        (``LEGALVAULT_BOVEDA_BUCKET_MB``, 1 MB por defecto).
+        """
+
+        if valor is None or valor == "":
+            pedido = settings.boveda_bucket_mb
+        else:
+            try:
+                pedido = int(valor)
+            except (TypeError, ValueError):
+                raise ValidationError("La cubeta de la bóveda no es válida.") from None
+        if pedido < 0:
+            raise ValidationError("La cubeta de la bóveda no es válida.")
+        return pedido
+
+    @staticmethod
+    def _cifrar_para(boveda: Boveda, contenido: dict, password: str) -> dict:
+        """Re-cifra una vista **conservando la cubeta** de la bóveda.
+
+        Si la bóveda es antigua (``bucket_mb == 0``) se mantiene sin padding, de
+        modo que las bóvedas heredadas siguen abriéndose y editándose igual.
+        """
+
+        return cifrar(contenido, password, bucket_mb=boveda.bucket_mb)
 
     @staticmethod
     def _nueva_entrada(titulo: str, contenido: str) -> dict:
