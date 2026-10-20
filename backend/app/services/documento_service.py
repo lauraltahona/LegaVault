@@ -2,7 +2,10 @@
 
 Los archivos se guardan en disco (``data/uploads``) con un nombre generado
 por el sistema; el nombre original se conserva solo como metadato. Cada
-documento guarda un checksum SHA-256 para verificar su integridad.
+documento guarda un checksum SHA-256 que se **re-verifica** antes de cada
+descarga y bajo demanda (``verificar_integridad``): si el archivo en disco no
+coincide, la descarga se bloquea y se genera alerta crítica + registro en la
+auditoría.
 """
 
 from __future__ import annotations
@@ -21,9 +24,14 @@ from app.core.constants import (
     TipoAlerta,
     TipoDocumento,
 )
-from app.core.exceptions import NotFoundError, PermissionDeniedError, ValidationError
+from app.core.exceptions import (
+    ConflictError,
+    NotFoundError,
+    PermissionDeniedError,
+    ValidationError,
+)
 from app.core.validators import validar_texto_obligatorio
-from app.models.base import new_id
+from app.models.base import new_id, utcnow
 from app.models.documento import Documento
 from app.models.expediente import Expediente
 from app.models.user import User
@@ -94,6 +102,56 @@ class DocumentoService:
     def obtener(self, documento_id: str, actor: User) -> Documento:
         documento, _ = self._obtener_con_expediente(documento_id, actor)
         return documento
+
+    def verificar_integridad(self, documento_id: str, actor: User) -> dict:
+        """Recalcula el SHA-256 del archivo en disco y lo compara con el metadato.
+
+        Integridad **verificable** (Módulo 3): no basta con calcular el hash una
+        vez al cargar. Si el resultado no coincide se registra una alerta crítica
+        y un evento de auditoría con resultado ``error``; la comprobación en sí
+        nunca interrumpe el resto de la aplicación.
+        """
+
+        documento, exp = self._obtener_con_expediente(documento_id, actor)
+        archivo = settings.uploads_dir / documento.nombre_almacenado
+        if not archivo.exists():
+            raise NotFoundError("El archivo físico del documento no está disponible.")
+
+        checksum = self._hash_sha256(archivo)
+        integro = checksum == documento.checksum_sha256
+
+        if integro:
+            self._auditoria.registrar(
+                AccionAuditoria.DOCUMENTO_VERIFICADO,
+                actor=actor,
+                entidad="documento",
+                entidad_id=documento.id,
+                detalle=(
+                    f"Verificación de integridad correcta de '{documento.nombre_original}' "
+                    f"en el expediente '{exp.identificador}': el SHA-256 en disco coincide "
+                    f"con el metadato registrado."
+                ),
+            )
+        else:
+            self._registrar_corrupcion(documento, exp, actor)
+
+        return {
+            "documento_id": documento.id,
+            "integro": integro,
+            "checksum_esperado": documento.checksum_sha256,
+            "checksum_calculado": checksum,
+            "tamano_esperado": documento.tamano_bytes,
+            "tamano_calculado": archivo.stat().st_size,
+            "verificado_en": utcnow(),
+            "mensaje": (
+                "SHA-256 verificado: el archivo en disco coincide con el metadato registrado."
+                if integro
+                else (
+                    f"¡Integridad comprometida! El SHA-256 de '{documento.nombre_original}' "
+                    "en disco no coincide con el registrado; se generó una alerta crítica."
+                )
+            ),
+        }
 
     # --- comandos -------------------------------------------------------
     def subir(
@@ -180,6 +238,17 @@ class DocumentoService:
         if not archivo.exists():
             raise NotFoundError("El archivo físico del documento no está disponible.")
 
+        # Re-verificación de integridad antes de servir el archivo (Módulo 3):
+        # si el SHA-256 en disco no coincide con el metadato registrado, la
+        # descarga queda bloqueada con un 409 y se genera alerta + auditoría.
+        if self._hash_sha256(archivo) != documento.checksum_sha256:
+            self._registrar_corrupcion(documento, exp, actor)
+            raise ConflictError(
+                "Verificación de integridad fallida: el SHA-256 del archivo en disco "
+                "no coincide con el registrado. La descarga queda bloqueada y se "
+                "generó una alerta de seguridad."
+            )
+
         self._alertas.registrar(
             TipoAlerta.DOCUMENTO_DESCARGADO,
             mensaje=(
@@ -259,6 +328,45 @@ class DocumentoService:
             raise NotFoundError("El expediente asociado ya no existe.")
         asegurar_acceso_expediente(actor, exp)
         return documento, exp
+
+    def _registrar_corrupcion(self, documento: Documento, expediente: Expediente, actor: User) -> None:
+        """Alerta crítica + auditoría cuando el hash en disco no coincide.
+
+        No se almacena el contenido del archivo, solo metadatos del evento.
+        """
+
+        self._alertas.registrar(
+            TipoAlerta.DOCUMENTO_CORRUPO,
+            severidad=SeveridadAlerta.CRITICA,
+            mensaje=(
+                f"El archivo de '{documento.nombre_original}' no coincide con el SHA-256 "
+                f"registrado al cargarlo (posible corrupción o manipulación)."
+            ),
+            usuario=actor.username,
+            usuario_id=actor.id,
+        )
+        self._auditoria.registrar(
+            AccionAuditoria.DOCUMENTO_CORRUPO,
+            actor=actor,
+            entidad="documento",
+            entidad_id=documento.id,
+            resultado=ResultadoAuditoria.ERROR,
+            detalle=(
+                f"Verificación de integridad fallida de '{documento.nombre_original}' en el "
+                f"expediente '{expediente.identificador}': el SHA-256 del archivo en disco no coincide "
+                f"con el metadato registrado."
+            ),
+        )
+
+    @staticmethod
+    def _hash_sha256(archivo: Path, tamano_bloque: int = 1024 * 1024) -> str:
+        """SHA-256 en streaming por bloques (no carga el archivo completo en memoria)."""
+
+        resumen = hashlib.sha256()
+        with archivo.open("rb") as flujo:
+            while bloque := flujo.read(tamano_bloque):
+                resumen.update(bloque)
+        return resumen.hexdigest()
 
     @staticmethod
     def _sanitizar_nombre(nombre: str) -> str:

@@ -14,7 +14,7 @@ seguridad.
 | --- | --- | --- |
 | **1. Autenticación y usuarios** | Inicio/cierre de sesión, CRUD y desactivación de usuarios, roles, protección contra intentos repetidos y hash `scrypt` de contraseñas. | ✅ |
 | **2. Expedientes** | Crear, consultar, editar y archivar; cliente, tipo de proceso, estado y abogado responsable; búsqueda/filtros y acceso según permisos. | ✅ |
-| **3. Documentos** | Carga, consulta y descarga autorizada; clasificación por tipo y sensibilidad; búsqueda por nombre/categoría/expediente; integridad por SHA-256. | ✅ |
+| **3. Documentos** | Carga, consulta y descarga autorizada; clasificación por tipo y sensibilidad; búsqueda por nombre/categoría/expediente; integridad por SHA-256 **re-verificada en cada descarga y bajo demanda** (`GET /documentos/{id}/verificar-integridad`, botón "Verificar" en la tabla): si el archivo en disco no coincide, la descarga se bloquea con **409** y se genera la alerta crítica `documento_corrupto` más su registro en auditoría. | ✅ |
 | **4. Bóveda cifrada de doble fondo** | Contenido cifrado con **AES-256-GCM** y clave derivada con **scrypt**. Cada bóveda guarda **dos vistas independientes**: cada contraseña abre un contenido distinto, sin que la estructura almacenada revele cuál es cuál (negación plausible). | ✅ |
 | **5. Permisos avanzados por expediente** | Matriz granular por usuario y acción (`leer`, `cargar`, `descargar`, `editar`, `eliminar`) que refina los permisos por defecto según rol y acceso; administrada por el administrador o el abogado responsable. | ✅ |
 | **6. Auditoría formal** | Registro local **append-only** de todas las acciones relevantes (autenticación, CRUD, accesos denegados y acciones de bóveda), encadenado con **SHA-256** y verificable desde la interfaz; cualquier edición manual del archivo es detectable. | ✅ |
@@ -122,13 +122,16 @@ cd backend
 ```
 
 Cubre autenticación, gestión de usuarios, expedientes, documentos (incluido el
-límite de sensibilidad por rol), permisos granulares por expediente, bóveda de
-doble fondo, bloqueo por intentos fallidos, alertas, auditoría (con verificación
-de la cadena de integridad) y cierre de sesión.
+límite de sensibilidad por rol y la **re-verificación de integridad SHA-256**:
+descarga bloqueada con 409 y alerta crítica ante corrupción), permisos
+granulares por expediente, bóveda de doble fondo, bloqueo por intentos
+fallidos, alertas, auditoría (con verificación de la cadena de integridad) y
+cierre de sesión.
 
 Suite de pruebas automatizadas con **pytest**: primitivas de seguridad, validadores,
 permisos, repositorio JSON, criptografía de la bóveda, API de los módulos 1, 2, 3 y
-7, la matriz de permisos del módulo 5 y la cadena de auditoría del módulo 6.
+7, la matriz de permisos del módulo 5, la cadena de auditoría del módulo 6 y la
+**re-verificación de integridad de documentos** (`tests/test_integridad_documentos.py`).
 
 ```powershell
 cd backend

@@ -19,6 +19,7 @@ os.environ["LEGALVAULT_MAX_INTENTOS"] = "3"
 
 from fastapi.testclient import TestClient  # noqa: E402
 
+from app.core.config import settings  # noqa: E402
 from app.main import app  # noqa: E402
 
 cliente = TestClient(app)
@@ -197,6 +198,54 @@ def main() -> int:
         f"/api/documentos/{publico.json()['id']}/descargar", headers=cabecera(token_abogado)
     )
     comprobar(descarga.status_code == 200, "Descargar documento autorizado")
+
+    # Re-verificación de integridad SHA-256 (mejora #3 del plan).
+    documento_id = publico.json()["id"]
+    verificacion = cliente.get(
+        f"/api/documentos/{documento_id}/verificar-integridad", headers=cabecera(token_abogado)
+    )
+    comprobar(
+        verificacion.status_code == 200 and verificacion.json()["integro"] is True,
+        "Verificación de integridad SHA-256 correcta",
+    )
+    comprobar(
+        verificacion.json()["checksum_calculado"] == publico.json()["checksum_sha256"],
+        "El checksum recalculado coincide con el metadato registrado",
+    )
+
+    # Alterar el archivo en disco: la descarga debe bloquearse con 409 + alerta.
+    ruta_fisica = next(settings.uploads_dir.glob(f"{documento_id}*"))
+    contenido_original = ruta_fisica.read_bytes()
+    ruta_fisica.write_bytes(b"CONTENIDO ALTERADO POR LA PRUEBA")
+    bloqueo = cliente.get(
+        f"/api/documentos/{documento_id}/descargar", headers=cabecera(token_abogado)
+    )
+    comprobar(
+        bloqueo.status_code == 409,
+        "La descarga se bloquea con 409 si el SHA-256 no coincide",
+    )
+    rota = cliente.get(
+        f"/api/documentos/{documento_id}/verificar-integridad", headers=cabecera(token_abogado)
+    )
+    comprobar(
+        rota.status_code == 200 and rota.json()["integro"] is False,
+        "La verificación detecta el archivo alterado",
+    )
+    alertas_corrupcion = cliente.get(
+        "/api/alertas?tipo=documento_corrupto", headers=cabecera(token_admin)
+    ).json()
+    comprobar(
+        any(alerta["severidad"] == "critica" for alerta in alertas_corrupcion),
+        "Se genera la alerta crítica DOCUMENTO_CORRUPO",
+    )
+    ruta_fisica.write_bytes(contenido_original)
+    comprobar(
+        cliente.get(
+            f"/api/documentos/{documento_id}/descargar", headers=cabecera(token_abogado)
+        ).status_code
+        == 200,
+        "Restaurado el archivo, la descarga vuelve a funcionar",
+    )
 
     # --- Módulo 5: permisos granulares por expediente ---
     comprobar(

@@ -322,6 +322,32 @@ code {
   flex-wrap: wrap;
 }
 
+/* Resultado de la verificación de integridad SHA-256 (Módulo 3). */
+.verificacion {
+  flex-basis: 100%;
+  text-align: right;
+  font-size: 12px;
+  max-width: 260px;
+  overflow-wrap: anywhere;
+}
+
+.verificacion-comprobando {
+  color: var(--texto-suave);
+}
+
+.verificacion-integro {
+  color: var(--verde);
+}
+
+.verificacion-rota {
+  color: var(--rojo);
+  font-weight: 600;
+}
+
+.verificacion-error {
+  color: var(--rojo);
+}
+
 .celda-badges {
   display: flex;
   gap: 6px;

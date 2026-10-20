@@ -4,6 +4,9 @@ export const listarDocumentos = (filtros = {}) => apiFetch(`/documentos${query(f
 
 export const obtenerDocumento = (id) => apiFetch(`/documentos/${id}`)
 
+/** Recalcula el SHA-256 en el servidor y lo compara con el metadato (Módulo 3). */
+export const verificarIntegridad = (id) => apiFetch(`/documentos/${id}/verificar-integridad`)
+
 export function cargarDocumento(expedienteId, tipo, nivelSensibilidad, descripcion, archivo) {
   const formulario = new FormData()
   formulario.append('expediente_id', expedienteId)

@@ -23,3 +23,16 @@ class DocumentoResponse(BaseModel):
     subido_por_id: str
     creado_en: datetime
     actualizado_en: datetime
+
+
+class VerificacionIntegridadResponse(BaseModel):
+    """Resultado de re-verificar el SHA-256 del archivo en disco (Módulo 3)."""
+
+    documento_id: str
+    integro: bool
+    checksum_esperado: str
+    checksum_calculado: str
+    tamano_esperado: int
+    tamano_calculado: int
+    verificado_en: datetime
+    mensaje: str

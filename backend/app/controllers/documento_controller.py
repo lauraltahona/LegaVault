@@ -9,7 +9,7 @@ from app.controllers.dependencies import get_current_user
 from app.core.constants import NivelSensibilidad, TipoDocumento
 from app.core.container import documento_service
 from app.models.user import User
-from app.schemas.documento_schema import DocumentoResponse
+from app.schemas.documento_schema import DocumentoResponse, VerificacionIntegridadResponse
 
 router = APIRouter(prefix="/documentos", tags=["Documentos"])
 
@@ -62,6 +62,26 @@ async def cargar(
 @router.get("/{documento_id}", response_model=DocumentoResponse, summary="Obtener documento")
 def obtener(documento_id: str, usuario: User = Depends(get_current_user)) -> DocumentoResponse:
     return DocumentoResponse.model_validate(documento_service().obtener(documento_id, usuario))
+
+
+@router.get(
+    "/{documento_id}/verificar-integridad",
+    response_model=VerificacionIntegridadResponse,
+    summary="Re-verificar la integridad (SHA-256) de un documento",
+)
+def verificar_integridad(
+    documento_id: str, usuario: User = Depends(get_current_user)
+) -> VerificacionIntegridadResponse:
+    """Recalcula el SHA-256 del archivo en disco y lo compara con el metadato.
+
+    Si no coincide, el servidor registra una alerta crítica y un evento de
+    auditoría con resultado ``error`` (la respuesta sigue siendo 200 con
+    ``integro: false`` para que la interfaz pueda mostrar ambos estados).
+    """
+
+    return VerificacionIntegridadResponse(
+        **documento_service().verificar_integridad(documento_id, usuario)
+    )
 
 
 @router.get("/{documento_id}/descargar", summary="Descargar documento")
