@@ -18,7 +18,7 @@ seguridad.
 | **4. Bóveda cifrada de doble fondo** | Contenido cifrado con **AES-256-GCM** y clave derivada con **scrypt**. Cada bóveda guarda **dos vistas independientes**: cada contraseña abre un contenido distinto, sin que la estructura almacenada revele cuál es cuál (negación plausible). | ✅ |
 | **5. Permisos avanzados por expediente** | Matriz granular por usuario y acción (`leer`, `cargar`, `descargar`, `editar`, `eliminar`) que refina los permisos por defecto según rol y acceso; administrada por el administrador o el abogado responsable. | ✅ |
 | **6. Auditoría formal** | Registro local **append-only** de todas las acciones relevantes (autenticación, CRUD, accesos denegados y acciones de bóveda), encadenado con **SHA-256** y verificable desde la interfaz; cualquier edición manual del archivo es detectable, y la página de auditoría **visualiza la cadena animada** (eslabones con hash truncado, barrido de verificación y resaltado del primer eslabón roto). | ✅ |
-| **7. Alertas de seguridad** | Conteo de intentos fallidos, bloqueo temporal configurable, panel de alertas para el administrador (fecha, usuario y tipo, sin secretos). | ✅ |
+| **7. Alertas de seguridad** | Conteo de intentos fallidos, bloqueo temporal configurable, panel de alertas para el administrador (fecha, usuario y tipo, sin secretos) y **reglas de correlación** que analizan varias alertas en conjunto (detección básica de anomalías estilo SIEM): ráfagas de denegaciones, descargas masivas y logins desde IPs nunca vistas generan alertas `patron_sospechoso`, con las reglas visibles en `GET /alertas/reglas`. | ✅ |
 
 Cada expediente admite una **matriz de permisos** (módulo 5) que refina, por
 usuario y acción, los permisos derivados del rol y del acceso base. El
@@ -132,8 +132,11 @@ cierre de sesión.
 
 Suite de pruebas automatizadas con **pytest**: primitivas de seguridad, validadores,
 permisos, repositorio JSON, criptografía de la bóveda, API de los módulos 1, 2, 3 y
-7, la matriz de permisos del módulo 5, la cadena de auditoría del módulo 6 y la
-**re-verificación de integridad de documentos** (`tests/test_integridad_documentos.py`).
+7, la matriz de permisos del módulo 5, la cadena de auditoría del módulo 6, la
+**re-verificación de integridad de documentos** (`tests/test_integridad_documentos.py`)
+y las **reglas de correlación de alertas** (`tests/test_correlacion_alertas.py`:
+umbrales, ventanas, enfriamiento, línea base de IP, ausencia de bucles,
+retrocompatibilidad del campo `regla` y flujo real de login → `patron_sospechoso`).
 
 ```powershell
 cd backend
@@ -257,4 +260,5 @@ con capacidad forense avanzada:
 
 - Módulo 5: permisos avanzados configurables.
 - Base de datos real y almacén persistente para la revocación de tokens.
-- Cifrado en reposo de los documentos y análisis avanzado de alertas.
+- Cifrado en reposo de los documentos y resumen de "estado de seguridad" en el
+  panel (las reglas de correlación de alertas ya están implementadas).

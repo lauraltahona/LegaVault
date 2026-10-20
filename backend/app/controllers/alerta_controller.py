@@ -8,8 +8,13 @@ from fastapi import APIRouter, Depends, Query
 
 from app.controllers.dependencies import require_admin
 from app.core.constants import SeveridadAlerta, TipoAlerta
-from app.core.container import alerta_service
-from app.schemas.alerta_schema import AlertaResponse, AlertaResumen, MarcarLeidaRequest
+from app.core.container import alerta_service, correlacion_service
+from app.schemas.alerta_schema import (
+    AlertaResponse,
+    AlertaResumen,
+    MarcarLeidaRequest,
+    ReglaCorrelacionResponse,
+)
 from app.schemas.paginacion import RespuestaPaginada
 
 router = APIRouter(
@@ -55,6 +60,32 @@ def listar(
 @router.get("/resumen", response_model=AlertaResumen, summary="Resumen de alertas")
 def resumen() -> AlertaResumen:
     return AlertaResumen(**alerta_service().resumen())
+
+
+@router.get(
+    "/reglas",
+    response_model=list[ReglaCorrelacionResponse],
+    summary="Reglas de correlación activas",
+)
+def reglas() -> list[ReglaCorrelacionResponse]:
+    """Describe las reglas de correlación que vigilan patrones sospechosos.
+
+    Expone qué detecta el sistema (umbrales y ventanas incluidos) para que
+    el administrador entienda de qué se generan las alertas
+    ``patron_sospechoso`` (detección básica de anomalías, estilo SIEM).
+    """
+
+    return [
+        ReglaCorrelacionResponse(
+            id=regla.id,
+            descripcion=regla.descripcion,
+            severidad=regla.severidad,
+            umbral=regla.umbral,
+            ventana_segundos=regla.ventana_segundos,
+            tipos_vigilados=list(regla.tipos_vigilados),
+        )
+        for regla in correlacion_service().reglas()
+    ]
 
 
 @router.patch("/{alerta_id}/leida", response_model=AlertaResponse, summary="Marcar alerta como leída")

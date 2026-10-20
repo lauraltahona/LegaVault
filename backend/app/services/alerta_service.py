@@ -12,6 +12,7 @@ from app.core.constants import SeveridadAlerta, TipoAlerta
 from app.core.exceptions import NotFoundError
 from app.models.alerta import Alerta
 from app.repositories.alerta_repository import AlertaRepository
+from app.services.correlacion_service import CorrelacionAlertasService
 
 # Mensajes descriptivos por tipo de evento (sin datos sensibles).
 _DESCRIPCIONES: dict[TipoAlerta, str] = {
@@ -42,6 +43,9 @@ _DESCRIPCIONES: dict[TipoAlerta, str] = {
     TipoAlerta.BOVEDA_EDITADA: "Contenido de bóveda modificado.",
     TipoAlerta.BOVEDA_CREDENCIALES: "Credenciales de bóveda actualizadas.",
     TipoAlerta.BOVEDA_ELIMINADA: "Bóveda eliminada.",
+    TipoAlerta.PATRON_SOSPECHOSO: (
+        "Patrón sospechoso detectado por correlación de varias alertas de seguridad."
+    ),
 }
 
 # Severidad por defecto según el tipo de evento.
@@ -56,12 +60,20 @@ _SEVERIDAD_POR_DEFECTO: dict[TipoAlerta, SeveridadAlerta] = {
     TipoAlerta.BOVEDA_ABIERTA: SeveridadAlerta.ADVERTENCIA,
     TipoAlerta.BOVEDA_ACCESO_FALLIDO: SeveridadAlerta.ADVERTENCIA,
     TipoAlerta.BOVEDA_ELIMINADA: SeveridadAlerta.ADVERTENCIA,
+    TipoAlerta.PATRON_SOSPECHOSO: SeveridadAlerta.ADVERTENCIA,
 }
 
 
 class AlertaService:
-    def __init__(self, repository: AlertaRepository) -> None:
+    def __init__(
+        self,
+        repository: AlertaRepository,
+        correlacion: CorrelacionAlertasService | None = None,
+    ) -> None:
         self._repo = repository
+        # Servicio aditivo de correlación (Módulo 7, mejora #13): opcional
+        # para que esta clase siga siendo utilizable por sí sola.
+        self._correlacion = correlacion
 
     def registrar(
         self,
@@ -87,7 +99,14 @@ class AlertaService:
             usuario_id=usuario_id,
             ip=ip,
         )
-        return self._repo.add(alerta)
+        alerta = self._repo.add(alerta)
+        # Correlación de alertas (Módulo 7, mejora #13): tras registrar el
+        # evento, el servicio de correlación analiza el histórico y puede
+        # generar alertas PATRON_SOSPECHOSO. Es aditivo: la alerta recién
+        # registrada nunca se modifica ni elimina.
+        if self._correlacion is not None:
+            self._correlacion.evaluar(alerta)
+        return alerta
 
     def listar(
         self,

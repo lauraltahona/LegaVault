@@ -20,6 +20,7 @@ from app.services.alerta_service import AlertaService
 from app.services.auditoria_service import AuditoriaService
 from app.services.auth_service import AuthService
 from app.services.boveda_service import BovedaService
+from app.services.correlacion_service import CorrelacionAlertasService
 from app.services.documento_service import DocumentoService
 from app.services.expediente_service import ExpedienteService
 from app.services.user_service import UserService
@@ -58,8 +59,19 @@ def auditoria_repository() -> AuditoriaRepository:
 
 # --- Servicios -----------------------------------------------------------
 @lru_cache
+def correlacion_service() -> CorrelacionAlertasService:
+    """Reglas de correlación de alertas (Módulo 7, mejora #13).
+
+    Depende solo del repositorio de alertas (lee el histórico y escribe sus
+    propias alertas), por lo que no hay ciclos con ``alerta_service``.
+    """
+
+    return CorrelacionAlertasService(alerta_repository())
+
+
+@lru_cache
 def alerta_service() -> AlertaService:
-    return AlertaService(alerta_repository())
+    return AlertaService(alerta_repository(), correlacion=correlacion_service())
 
 
 @lru_cache

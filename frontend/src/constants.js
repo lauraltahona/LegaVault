@@ -63,6 +63,7 @@ export const TIPOS_ALERTA = {
   boveda_editada: 'Bóveda editada',
   boveda_credenciales: 'Credenciales de bóveda',
   boveda_eliminada: 'Bóveda eliminada',
+  patron_sospechoso: 'Patrón sospechoso (correlación)',
 }
 
 export const SEVERIDADES = {

@@ -23,6 +23,10 @@ class Alerta(BaseEntity):
     usuario_id: str = ""
     ip: str = ""
     leida: bool = False
+    # Identificador de la regla de correlación que generó esta alerta
+    # (vacío para las alertas "nativas" registradas directamente por los
+    # servicios). Campo aditivo: los JSON antiguos cargan sin él (Módulo 7).
+    regla: str = ""
 
     @classmethod
     def from_dict(cls, data: dict) -> "Alerta":
@@ -37,4 +41,5 @@ class Alerta(BaseEntity):
             usuario_id=data.get("usuario_id", ""),
             ip=data.get("ip", ""),
             leida=bool(data.get("leida", False)),
+            regla=data.get("regla", ""),
         )

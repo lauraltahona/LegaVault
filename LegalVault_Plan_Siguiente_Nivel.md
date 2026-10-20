@@ -107,7 +107,7 @@ existe — eso es oro educativo: enseña críticamente, no solo a usar.
 | Mejora | Detalle | Pri. | Enseña |
 | --- | --- | --- | --- |
 | **IP y User-Agent en todas las alertas** | Hoy solo `auth_service` rellena `ip`; propagar `obtener_ip()` a todos los servicios. | P0 | Correlación de eventos |
-| **Reglas de correlación** | Reglas simples en un servicio: "≥3 accesos denegados en 5 min del mismo usuario", "descarga de 10 documentos en 1 min", "login con IP nueva". Genera alerta `PATRON_SOSPECHOSO`. | P1 | Detección de anomalías básica, qué es un SIEM |
+| **Reglas de correlación** ✅ | Reglas simples en un servicio: "≥3 accesos denegados en 5 min del mismo usuario", "descarga de 10 documentos en 1 min", "login con IP nueva". Genera alerta `PATRON_SOSPECHOSO` → ✅ **implementado 2026-10-20** (`app/services/correlacion_service.py`: `CorrelacionAlertasService` aditivo que depende solo del repositorio de alertas y se engancha en un único punto opcional de `AlertaService.registrar`; 3 reglas declarativas — `denegados_rapidos` (≥3 denegaciones del mismo usuario en 5 min, mezclando `login_fallido`/`acceso_denegado`/`boveda_acceso_fallido`/`cuenta_bloqueada`, severidad crítica), `descargas_masivas` (≥10 descargas en 60 s) e `ip_nunca_vista` (login desde IP jamás vista, con línea base y enfriamiento); sin bucles (las alertas `patron_sospechoso` no se retroalimentan), sin secretos en mensajes, umbrales por env `LEGALVAULT_CORR_*`, campo opcional `regla` en la alerta (JSON antiguos cargan igual), nuevo tipo `patron_sospechoso` en el enum y etiqueta en el frontend, endpoint educativo `GET /alertas/reglas`; 26 pruebas nuevas en `tests/test_correlacion_alertas.py` — **171 pytest en verde** + smoke_test con 3 comprobaciones nuevas) | P1 | Detección de anomalías básica, qué es un SIEM |
 | **Resumen "estado de seguridad"** | Tarjeta en el panel: puntuación 0–100 derivada de reglas (bloqueos activos, alertas críticas, permisos vencidos, auditoría íntegra). | P2 | Postura de seguridad |
 
 ---
@@ -416,7 +416,7 @@ en pantalla).
 | 10 | Paginación en listados ✅ | Backend + frontend | Mecánico, pero toca muchos endpoints: hacerlo de una vez, no a medias |
 | 11 | Historial de cambios de expedientes | Backend (JSON nuevo) + frontend | Aditivo: archivo nuevo, no toca el modelo existente |
 | 12 | Permisos con caducidad (`hasta`) | Backend + frontend | Campo aditivo con default `null` = comportamiento actual intacto |
-| 13 | Reglas de correlación en alertas | Backend | Aditivo: nuevo servicio que **genera** alertas; no modifica las existentes |
+| 13 | Reglas de correlación en alertas ✅ | Backend | Aditivo: nuevo servicio que **genera** alertas; no modifica las existentes → ✅ **implementado 2026-10-20** (`CorrelacionAlertasService` con 3 reglas: `denegados_rapidos`, `descargas_masivas`, `ip_nunca_vista`; genera alertas `patron_sospechoso` con campo `regla`, umbrales configurables por env, endpoint `GET /alertas/reglas` y 26 pruebas nuevas) |
 | 14 | Resumen "estado de seguridad" en el panel | Frontend + endpoint | Derivado de datos ya existentes |
 
 ### Nivel 3 — Alto impacto para la expo, riesgo MEDIO (elegir **uno** y tener tiempo de testearlo)

@@ -88,6 +88,9 @@ class TipoAlerta(str, Enum):
     BOVEDA_EDITADA = "boveda_editada"
     BOVEDA_CREDENCIALES = "boveda_credenciales"
     BOVEDA_ELIMINADA = "boveda_eliminada"
+    # Generada por el servicio de correlación (Módulo 7, mejora #13): resume
+    # un patrón sospechoso detectado al analizar varias alertas en conjunto.
+    PATRON_SOSPECHOSO = "patron_sospechoso"
 
 
 class SeveridadAlerta(str, Enum):

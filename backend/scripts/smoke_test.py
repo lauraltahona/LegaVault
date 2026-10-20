@@ -457,6 +457,29 @@ def main() -> int:
         "Un usuario no administrador no puede ver las alertas (403)",
     )
 
+    # --- Módulo 7: reglas de correlación (mejora #13) ---
+    # La ráfaga de denegaciones del bloqueo anterior (2 fallos + bloqueo)
+    # debe haber generado una alerta de patrón sospechoso.
+    reglas = cliente.get("/api/alertas/reglas", headers=cabecera(token_admin))
+    comprobar(
+        reglas.status_code == 200
+        and {regla["id"] for regla in reglas.json()}
+        == {"denegados_rapidos", "descargas_masivas", "ip_nunca_vista"},
+        "Las reglas de correlación de alertas están disponibles",
+    )
+    patrones = cliente.get(
+        "/api/alertas?tipo=patron_sospechoso&usuario=abogado.smoke",
+        headers=cabecera(token_admin),
+    ).json()["items"]
+    comprobar(
+        len(patrones) >= 1 and patrones[0]["regla"] == "denegados_rapidos",
+        "La ráfaga de denegaciones genera alerta de correlación patron_sospechoso",
+    )
+    comprobar(
+        cliente.get("/api/alertas/reglas", headers=cabecera(token_asistente)).status_code == 403,
+        "Un usuario no administrador no puede ver las reglas de correlación (403)",
+    )
+
     desbloqueo = cliente.post(
         f"/api/usuarios/{abogado['id']}/desbloquear", headers=cabecera(token_admin)
     )

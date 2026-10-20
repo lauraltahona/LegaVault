@@ -105,6 +105,25 @@ class Settings:
         default_factory=lambda: _env_int("LEGALVAULT_BOVEDA_BUCKET_MB", 1)
     )
 
+    # --- Reglas de correlación de alertas (Módulo 7, mejora #13) ---
+    # Umbrales del servicio que detecta patrones sospechosos analizando
+    # varias alertas en conjunto (detección básica de anomalías, estilo SIEM).
+    corr_denegados_umbral: int = field(
+        default_factory=lambda: _env_int("LEGALVAULT_CORR_DENEGADOS_UMBRAL", 3)
+    )
+    corr_denegados_minutos: int = field(
+        default_factory=lambda: _env_int("LEGALVAULT_CORR_DENEGADOS_MINUTOS", 5)
+    )
+    corr_descargas_umbral: int = field(
+        default_factory=lambda: _env_int("LEGALVAULT_CORR_DESCARGAS_UMBRAL", 10)
+    )
+    corr_descargas_segundos: int = field(
+        default_factory=lambda: _env_int("LEGALVAULT_CORR_DESCARGAS_SEGUNDOS", 60)
+    )
+    corr_ip_cooldown_minutos: int = field(
+        default_factory=lambda: _env_int("LEGALVAULT_CORR_IP_COOLDOWN_MINUTOS", 60)
+    )
+
     @property
     def uploads_dir(self) -> Path:
         return self.data_dir / "uploads"
