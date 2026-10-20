@@ -4,7 +4,19 @@ import Aviso from './Aviso.jsx'
 import Modal from './Modal.jsx'
 import { cargarDocumento } from '../api/documentos.js'
 import { useAuth } from '../context/AuthContext.jsx'
-import { NIVELES_SENSIBILIDAD, TIPOS_DOCUMENTO, opciones } from '../constants.js'
+import {
+  ARCHIVO_ACCEPT,
+  EXTENSIONES_ARCHIVO_PERMITIDAS,
+  NIVELES_SENSIBILIDAD,
+  TIPOS_DOCUMENTO,
+  opciones,
+} from '../constants.js'
+
+/** Devuelve la extensión en minúsculas de un nombre de archivo ('' si no tiene). */
+function extensionDe(nombre) {
+  const punto = String(nombre ?? '').lastIndexOf('.')
+  return punto === -1 ? '' : String(nombre).slice(punto).toLowerCase()
+}
 
 /** Formulario modal para subir un documento a un expediente (Módulo 3). */
 export default function SubirDocumentoModal({
@@ -51,6 +63,28 @@ export default function SubirDocumentoModal({
     } finally {
       setEnviando(false)
     }
+  }
+
+  /** Pre-chequeo de la lista blanca (el servidor re-valida por magic bytes). */
+  function seleccionarArchivo(evento) {
+    const elegido = evento.target.files?.[0] ?? null
+    setError('')
+    if (!elegido) {
+      setArchivo(null)
+      return
+    }
+    const extension = extensionDe(elegido.name)
+    if (!EXTENSIONES_ARCHIVO_PERMITIDAS.includes(extension)) {
+      setArchivo(null)
+      evento.target.value = ''
+      setError(
+        `Tipo de archivo no permitido ('${extension || 'sin extensión'}'). ` +
+          `Extensiones admitidas: ${EXTENSIONES_ARCHIVO_PERMITIDAS.join(', ')}. ` +
+          'El contenido se verifica en el servidor con sus magic bytes: la extensión no puede mentir.',
+      )
+      return
+    }
+    setArchivo(elegido)
   }
 
   return (
@@ -109,7 +143,11 @@ export default function SubirDocumentoModal({
 
         <label className="campo">
           <span>Archivo *</span>
-          <input type="file" onChange={(e) => setArchivo(e.target.files?.[0] ?? null)} />
+          <input
+            type="file"
+            accept={ARCHIVO_ACCEPT}
+            onChange={seleccionarArchivo}
+          />
         </label>
 
         <label className="campo">
@@ -122,6 +160,10 @@ export default function SubirDocumentoModal({
         </label>
 
         <p className="nota">
+          Tipos admitidos: TXT, CSV, PNG, JPG, PDF y ZIP. El servidor valida el contenido
+          real con sus <em>magic bytes</em>: una extensión que no corresponde al contenido
+          se rechaza y queda registrado como alerta de seguridad.
+          <br />
           {esAsistente
             ? 'Como asistente jurídico solo puede cargar documentos públicos o internos; los confidenciales los gestiona un abogado o un administrador.'
             : 'Los documentos marcados como confidencial no estarán disponibles para el rol de asistente jurídico.'}

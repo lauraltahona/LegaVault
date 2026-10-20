@@ -398,7 +398,7 @@ con alma educativa**, manteniendo intactos su idea, su arquitectura y lo que ya 
 | 1 | **Tarjetas de concepto cripto contextuales** (C1) | Solo frontend | 2–3 h | Catálogo en `src/conceptos.js` + componente nuevo; no toca lógica existente |
 | 2 | **Página "¿Qué me protege y qué no?"** (C3) | Solo frontend | 1–2 h | Contenido estático; es la página que más pensamiento crítico demuestra |
 | 3 | **Re-verificar SHA-256 al descargar** + botón "Verificar integridad" en la tabla de documentos | Backend (poco) + frontend | 1–2 h → ✅ **implementado 2026-10-19** | Añade una comprobación; si no coincide lanza alerta, no rompe nada |
-| 4 | **Validación de tipo por magic bytes** al subir | Backend (poco) | 1–2 h | ⚠️ Incluir `txt/png/jpg/pdf/zip/csv` en la lista blanca (el `seed` sube `.txt`) para no romper la demo |
+| 4 | **Validación de tipo por magic bytes** al subir | Backend (poco) | 1–2 h | ⚠️ Incluir `txt/png/jpg/pdf/zip/csv` en la lista blanca (el `seed` sube `.txt`) para no romper la demo → ✅ **implementado 2026-10-19** (`app/core/magic_bytes.py`, lista blanca configurable por `LEGALVAULT_EXTENSIONES_PERMITIDAS`, alerta `documento_rechazado` + auditoría `denegado`; 113 tests en verde) |
 | 5 | **IP en todas las alertas y auditoría** (hoy solo auth la rellena) | Backend | 1 h | Propagar `obtener_ip()` a los servicios; cambio cosmético-registrable |
 | 6 | **Rate limiting por IP en login** (token bucket en memoria) | Backend (poco) | 1–2 h | Aislado en `core/`; solo afecta al endpoint de login |
 | 7 | **Visualización animada de la cadena de auditoría** (eslabones con hash truncado + resaltar el roto) | Solo frontend | 2–3 h | Ya existe `GET /auditoria/verificar`; es **el remate visual** de la demo de auditoría |

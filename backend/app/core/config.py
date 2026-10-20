@@ -23,6 +23,33 @@ def _env_int(name: str, default: int) -> int:
         return default
 
 
+def _env_extensiones(name: str) -> tuple[str, ...] | None:
+    """Lee una lista blanca de extensiones separadas por comas (Módulo 3).
+
+    Acepta ``.pdf,png`` o ``.pdf, .png``; se normaliza a minúsculas con punto.
+    Devuelve ``None`` si la variable no está definida para usar el valor por
+    defecto de ``magic_bytes`` (fuente única de verdad).
+    """
+
+    valor = os.getenv(name, "")
+    if not valor.strip():
+        return None
+    extensiones: list[str] = []
+    for parte in valor.split(","):
+        ext = parte.strip().lower()
+        if not ext:
+            continue
+        extensiones.append(ext if ext.startswith(".") else f".{ext}")
+    return tuple(extensiones) or None
+
+
+def _extensiones_archivo_por_defecto() -> tuple[str, ...]:
+    # Import perezoso para evitar un ciclo config <-> magic_bytes.
+    from app.core.magic_bytes import EXTENSIONES_POR_DEFECTO
+
+    return EXTENSIONES_POR_DEFECTO
+
+
 @dataclass(frozen=True)
 class Settings:
     """Parámetros de configuración de LegalVault."""
@@ -58,6 +85,13 @@ class Settings:
     # --- Documentos (Módulo 3) ---
     max_tamano_archivo_mb: int = field(
         default_factory=lambda: _env_int("LEGALVAULT_MAX_ARCHIVO_MB", 25)
+    )
+
+    # Lista blanca de extensiones admitidas al subir (validación por magic bytes).
+    # Por defecto: txt, csv, png, jpg/jpeg, pdf y zip (el seed sube .txt).
+    extensiones_archivo_permitidas: tuple[str, ...] = field(
+        default_factory=lambda: _env_extensiones("LEGALVAULT_EXTENSIONES_PERMITIDAS")
+        or _extensiones_archivo_por_defecto()
     )
 
     @property

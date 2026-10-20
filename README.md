@@ -14,7 +14,7 @@ seguridad.
 | --- | --- | --- |
 | **1. Autenticación y usuarios** | Inicio/cierre de sesión, CRUD y desactivación de usuarios, roles, protección contra intentos repetidos y hash `scrypt` de contraseñas. | ✅ |
 | **2. Expedientes** | Crear, consultar, editar y archivar; cliente, tipo de proceso, estado y abogado responsable; búsqueda/filtros y acceso según permisos. | ✅ |
-| **3. Documentos** | Carga, consulta y descarga autorizada; clasificación por tipo y sensibilidad; búsqueda por nombre/categoría/expediente; integridad por SHA-256 **re-verificada en cada descarga y bajo demanda** (`GET /documentos/{id}/verificar-integridad`, botón "Verificar" en la tabla): si el archivo en disco no coincide, la descarga se bloquea con **409** y se genera la alerta crítica `documento_corrupto` más su registro en auditoría. | ✅ |
+| **3. Documentos** | Carga, consulta y descarga autorizada; clasificación por tipo y sensibilidad; búsqueda por nombre/categoría/expediente; **tipo real validado al cargar por magic bytes** (lista blanca `txt/csv/png/jpg/pdf/zip`, configurable con `LEGALVAULT_EXTENSIONES_PERMITIDAS`): una extensión que no coincide con el contenido se rechaza con **422** y genera la alerta `documento_rechazado` más su registro denegado en auditoría; integridad por SHA-256 **re-verificada en cada descarga y bajo demanda** (`GET /documentos/{id}/verificar-integridad`, botón "Verificar" en la tabla): si el archivo en disco no coincide, la descarga se bloquea con **409** y se genera la alerta crítica `documento_corrupto` más su registro en auditoría. | ✅ |
 | **4. Bóveda cifrada de doble fondo** | Contenido cifrado con **AES-256-GCM** y clave derivada con **scrypt**. Cada bóveda guarda **dos vistas independientes**: cada contraseña abre un contenido distinto, sin que la estructura almacenada revele cuál es cuál (negación plausible). | ✅ |
 | **5. Permisos avanzados por expediente** | Matriz granular por usuario y acción (`leer`, `cargar`, `descargar`, `editar`, `eliminar`) que refina los permisos por defecto según rol y acceso; administrada por el administrador o el abogado responsable. | ✅ |
 | **6. Auditoría formal** | Registro local **append-only** de todas las acciones relevantes (autenticación, CRUD, accesos denegados y acciones de bóveda), encadenado con **SHA-256** y verificable desde la interfaz; cualquier edición manual del archivo es detectable. | ✅ |
@@ -149,6 +149,7 @@ Variables de entorno (ver `backend/.env.example`):
 | `LEGALVAULT_MINUTOS_BLOQUEO` | `15` | Duración del bloqueo temporal. |
 | `LEGALVAULT_MINUTOS_TOKEN` | `60` | Caducidad de la sesión. |
 | `LEGALVAULT_MAX_ARCHIVO_MB` | `25` | Tamaño máximo de documento. |
+| `LEGALVAULT_EXTENSIONES_PERMITIDAS` | `.txt,.csv,.png,.jpg,.jpeg,.pdf,.zip` | Lista blanca de extensiones al subir (validación por magic bytes). |
 | `LEGALVAULT_DATA_DIR` | `backend/data` | Carpeta de datos JSON. |
 
 ## Roles y permisos

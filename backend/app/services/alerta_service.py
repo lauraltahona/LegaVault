@@ -32,6 +32,10 @@ _DESCRIPCIONES: dict[TipoAlerta, str] = {
     TipoAlerta.DOCUMENTO_CORRUPO: (
         "El archivo en disco no coincide con el SHA-256 registrado al cargarlo."
     ),
+    TipoAlerta.DOCUMENTO_RECHAZADO: (
+        "Carga rechazada: la extensión del archivo no coincide con su contenido "
+        "(validación por magic bytes) o el tipo no está admitido."
+    ),
     TipoAlerta.BOVEDA_CREADA: "Bóveda cifrada creada.",
     TipoAlerta.BOVEDA_ABIERTA: "Bóveda desbloqueada correctamente.",
     TipoAlerta.BOVEDA_ACCESO_FALLIDO: "Intento fallido de abrir una bóveda.",
@@ -47,6 +51,7 @@ _SEVERIDAD_POR_DEFECTO: dict[TipoAlerta, SeveridadAlerta] = {
     TipoAlerta.ACCESO_DENEGADO: SeveridadAlerta.ADVERTENCIA,
     TipoAlerta.DOCUMENTO_ELIMINADO: SeveridadAlerta.ADVERTENCIA,
     TipoAlerta.DOCUMENTO_CORRUPO: SeveridadAlerta.CRITICA,
+    TipoAlerta.DOCUMENTO_RECHAZADO: SeveridadAlerta.ADVERTENCIA,
     TipoAlerta.USUARIO_DESACTIVADO: SeveridadAlerta.ADVERTENCIA,
     TipoAlerta.BOVEDA_ABIERTA: SeveridadAlerta.ADVERTENCIA,
     TipoAlerta.BOVEDA_ACCESO_FALLIDO: SeveridadAlerta.ADVERTENCIA,

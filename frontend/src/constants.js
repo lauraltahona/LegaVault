@@ -56,6 +56,7 @@ export const TIPOS_ALERTA = {
   documento_descargado: 'Documento descargado',
   documento_eliminado: 'Documento eliminado',
   documento_corrupto: 'Integridad de documento rota',
+  documento_rechazado: 'Carga rechazada (tipo de archivo)',
   boveda_creada: 'Bóveda creada',
   boveda_abierta: 'Bóveda abierta',
   boveda_acceso_fallido: 'Acceso a bóveda fallido',
@@ -95,6 +96,7 @@ export const ACCIONES_AUDITORIA = {
   documento_eliminado: 'Documento eliminado',
   documento_verificado: 'Integridad verificada',
   documento_corrupto: 'Integridad rota (SHA-256)',
+  documento_rechazado: 'Carga rechazada (magic bytes)',
   boveda_creada: 'Bóveda creada',
   boveda_abierta: 'Bóveda abierta',
   boveda_acceso_fallido: 'Acceso a bóveda fallido',
@@ -113,6 +115,22 @@ export const ACCIONES_PERMISO = {
   editar: 'Editar',
   eliminar: 'Eliminar',
 }
+
+// Lista blanca de extensiones admitidas al subir documentos (Módulo 3).
+// El servidor valida el tipo REAL por magic bytes; esta lista guía al usuario
+// y debe mantenerse en sincronía con LEGALVAULT_EXTENSIONES_PERMITIDAS.
+export const EXTENSIONES_ARCHIVO_PERMITIDAS = [
+  '.txt',
+  '.csv',
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.pdf',
+  '.zip',
+]
+
+// Valor para el atributo `accept` del input de tipo archivo.
+export const ARCHIVO_ACCEPT = EXTENSIONES_ARCHIVO_PERMITIDAS.join(',')
 
 // Convierte un objeto de etiquetas en una lista de opciones para <select>.
 export function opciones(mapa) {

@@ -247,6 +247,62 @@ def main() -> int:
         "Restaurado el archivo, la descarga vuelve a funcionar",
     )
 
+    # Validación de tipo por magic bytes (mejora #4 del plan): la extensión no
+    # puede mentir sobre el contenido real del archivo.
+    pdf_real = b"%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\nstartxref\n0\n%%EOF\n"
+    tipo_ok = cliente.post(
+        "/api/documentos",
+        headers=cabecera(token_abogado),
+        data={
+            "expediente_id": expediente_id,
+            "tipo": "prueba",
+            "nivel_sensibilidad": "interno",
+            "descripcion": "Pericial auténtico",
+        },
+        files={"archivo": ("pericial.pdf", io.BytesIO(pdf_real), "application/pdf")},
+    )
+    comprobar(tipo_ok.status_code == 201, "Se acepta un PDF real (magic bytes %PDF)")
+
+    disfrazado = cliente.post(
+        "/api/documentos",
+        headers=cabecera(token_abogado),
+        data={
+            "expediente_id": expediente_id,
+            "tipo": "prueba",
+            "nivel_sensibilidad": "interno",
+        },
+        files={
+            "archivo": (
+                "malicioso.pdf",
+                io.BytesIO(b"MZ\x90\x00\x03\x00\x00\x00\x04\x00"),
+                "application/pdf",
+            )
+        },
+    )
+    comprobar(
+        disfrazado.status_code == 422,
+        "Un ejecutable renombrado a .pdf se rechaza (422)",
+    )
+    comprobar(
+        "magic bytes" in disfrazado.json()["detail"].lower(),
+        "El rechazo explica la validación por magic bytes",
+    )
+    rechazos = cliente.get(
+        "/api/alertas?tipo=documento_rechazado", headers=cabecera(token_admin)
+    ).json()
+    comprobar(
+        any("malicioso.pdf" in alerta["mensaje"] for alerta in rechazos),
+        "El rechazo genera la alerta DOCUMENTO_RECHAZADO",
+    )
+    rechazos_auditoria = cliente.get(
+        "/api/auditoria?accion=documento_rechazado&resultado=denegado",
+        headers=cabecera(token_admin),
+    ).json()
+    comprobar(
+        any("malicioso.pdf" in registro["detalle"] for registro in rechazos_auditoria),
+        "El rechazo queda en la auditoría como denegado",
+    )
+
     # --- Módulo 5: permisos granulares por expediente ---
     comprobar(
         cliente.put(

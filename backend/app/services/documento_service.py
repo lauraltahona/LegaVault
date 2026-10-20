@@ -30,6 +30,7 @@ from app.core.exceptions import (
     PermissionDeniedError,
     ValidationError,
 )
+from app.core.magic_bytes import validar_tipo_archivo
 from app.core.validators import validar_texto_obligatorio
 from app.models.base import new_id, utcnow
 from app.models.documento import Documento
@@ -180,6 +181,21 @@ class DocumentoService:
                 f"El archivo supera el tamaño máximo de {settings.max_tamano_archivo_mb} MB."
             )
 
+        # Validación del tipo real por magic bytes (Módulo 3, mejora #4): la
+        # extensión y el Content-Type los controla quien sube el archivo; el
+        # tipo real se decide leyendo los primeros bytes del contenido. Un
+        # rechazo queda registrado como alerta + auditoría con resultado
+        # "denegado" (solo metadatos, nunca el contenido del archivo).
+        try:
+            validar_tipo_archivo(
+                nombre_seguro,
+                contenido,
+                extensiones_permitidas=settings.extensiones_archivo_permitidas,
+            )
+        except ValidationError as exc:
+            self._registrar_rechazo(actor, exp, nombre_seguro, exc.message)
+            raise
+
         tipo_doc = self._normalizar(tipo, _TIPOS, TipoDocumento, "tipo de documento")
         nivel = self._normalizar(
             nivel_sensibilidad, _NIVELES, NivelSensibilidad, "nivel de sensibilidad"
@@ -328,6 +344,36 @@ class DocumentoService:
             raise NotFoundError("El expediente asociado ya no existe.")
         asegurar_acceso_expediente(actor, exp)
         return documento, exp
+
+    def _registrar_rechazo(
+        self, actor: User, expediente: Expediente, nombre: str, motivo: str
+    ) -> None:
+        """Rechazo por validación de tipo (magic bytes): alerta + auditoría.
+
+        Solo se registran metadatos del intento (nombre y motivo); el contenido
+        del archivo rechazado jamás se almacena ni se refleja en los mensajes
+        (regla innegociable: sin datos sensibles ni contenido en alertas).
+        """
+
+        mensaje = (
+            f"Carga de '{nombre}' rechazada en el expediente '{expediente.identificador}': "
+            f"{motivo}"
+        )
+        self._alertas.registrar(
+            TipoAlerta.DOCUMENTO_RECHAZADO,
+            severidad=SeveridadAlerta.ADVERTENCIA,
+            mensaje=mensaje,
+            usuario=actor.username,
+            usuario_id=actor.id,
+        )
+        self._auditoria.registrar(
+            AccionAuditoria.DOCUMENTO_RECHAZADO,
+            actor=actor,
+            entidad="documento",
+            entidad_id="",
+            resultado=ResultadoAuditoria.DENEGADO,
+            detalle=mensaje,
+        )
 
     def _registrar_corrupcion(self, documento: Documento, expediente: Expediente, actor: User) -> None:
         """Alerta crítica + auditoría cuando el hash en disco no coincide.
