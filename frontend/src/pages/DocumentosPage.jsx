@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import Aviso from '../components/Aviso.jsx'
+import Paginacion from '../components/Paginacion.jsx'
 import SubirDocumentoModal from '../components/SubirDocumentoModal.jsx'
 import TablaDocumentos from '../components/TablaDocumentos.jsx'
 import { descargarDocumento, eliminarDocumento, listarDocumentos } from '../api/documentos.js'
@@ -17,6 +18,8 @@ export default function DocumentosPage() {
   const [documentos, setDocumentos] = useState([])
   const [expedientes, setExpedientes] = useState([])
   const [filtros, setFiltros] = useState({ q: '', expediente_id: '', tipo: '', nivel_sensibilidad: '' })
+  const [pagina, setPagina] = useState(1)
+  const [paginacion, setPaginacion] = useState({ total: 0, paginas: 0, porPagina: 20 })
   const [subiendo, setSubiendo] = useState(false)
   const [error, setError] = useState('')
   const [cargando, setCargando] = useState(true)
@@ -29,7 +32,21 @@ export default function DocumentosPage() {
   async function cargar() {
     setCargando(true)
     try {
-      setDocumentos(await listarDocumentos(filtros))
+      const respuesta = await listarDocumentos({ ...filtros, pagina, por_pagina: paginacion.porPagina })
+      if (Array.isArray(respuesta)) {
+        setDocumentos(respuesta)
+        setPaginacion((prev) => ({ ...prev, total: respuesta.length, paginas: 1 }))
+      } else if (respuesta && Array.isArray(respuesta.items)) {
+        setDocumentos(respuesta.items)
+        setPaginacion({
+          total: respuesta.total || 0,
+          paginas: respuesta.paginas || 0,
+          porPagina: respuesta.por_pagina || paginacion.porPagina,
+        })
+      } else {
+        setDocumentos([])
+        setPaginacion((prev) => ({ ...prev, total: 0, paginas: 0 }))
+      }
     } catch (err) {
       setError(err.message)
     } finally {
@@ -38,14 +55,22 @@ export default function DocumentosPage() {
   }
 
   useEffect(() => {
-    listarExpedientes().then(setExpedientes).catch(() => setExpedientes([]))
+    listarExpedientes().then((resp) => {
+      if (Array.isArray(resp)) setExpedientes(resp)
+      else if (resp && Array.isArray(resp.items)) setExpedientes(resp.items)
+      else setExpedientes([])
+    }).catch(() => setExpedientes([]))
   }, [])
+
+  useEffect(() => {
+    setPagina(1)
+  }, [filtros.q, filtros.expediente_id, filtros.tipo, filtros.nivel_sensibilidad])
 
   useEffect(() => {
     const temporizador = setTimeout(cargar, 250)
     return () => clearTimeout(temporizador)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtros.q, filtros.expediente_id, filtros.tipo, filtros.nivel_sensibilidad])
+  }, [filtros.q, filtros.expediente_id, filtros.tipo, filtros.nivel_sensibilidad, pagina])
 
   async function descargar(documento) {
     setError('')

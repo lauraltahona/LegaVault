@@ -3,9 +3,11 @@ import { useEffect, useState } from 'react'
 import Aviso from '../components/Aviso.jsx'
 import CadenaAuditoria from '../components/CadenaAuditoria.jsx'
 import Insignia from '../components/Insignia.jsx'
+import Paginacion from '../components/Paginacion.jsx'
 import { listarAuditoria, resumenAuditoria, verificarAuditoria } from '../api/auditoria.js'
 import { ACCIONES_AUDITORIA, RESULTADOS_AUDITORIA, opciones } from '../constants.js'
 import { etiqueta, fechaHora, hashCorto } from '../utils/format.js'
+import { itemsDe } from '../utils/paginacion.js'
 
 const ENTIDADES = {
   usuario: 'Usuario',
@@ -35,6 +37,8 @@ export default function AuditoriaPage() {
   const [resumen, setResumen] = useState(null)
   const [verificacion, setVerificacion] = useState(null)
   const [filtros, setFiltros] = useState({ accion: '', resultado: '', usuario: '', entidad: '' })
+  const [pagina, setPagina] = useState(1)
+  const [paginacion, setPaginacion] = useState({ total: 0, paginas: 0, porPagina: 20 })
   const [error, setError] = useState('')
   const [cargando, setCargando] = useState(true)
   const [verificando, setVerificando] = useState(false)
@@ -42,8 +46,21 @@ export default function AuditoriaPage() {
   async function cargar() {
     setCargando(true)
     try {
-      const [lista, totales] = await Promise.all([listarAuditoria(filtros), resumenAuditoria()])
-      setRegistros(lista)
+      const [respuesta, totales] = await Promise.all([
+        listarAuditoria({ ...filtros, pagina, por_pagina: paginacion.porPagina }),
+        resumenAuditoria(),
+      ])
+      const items = itemsDe(respuesta)
+      setRegistros(items)
+      setPaginacion((prev) =>
+        Array.isArray(respuesta)
+          ? { ...prev, total: items.length, paginas: 1 }
+          : {
+              total: respuesta?.total ?? 0,
+              paginas: respuesta?.paginas ?? 0,
+              porPagina: respuesta?.por_pagina || prev.porPagina,
+            },
+      )
       setResumen(totales)
     } catch (err) {
       setError(err.message)
@@ -56,8 +73,8 @@ export default function AuditoriaPage() {
   // eslabón coincide con el `indice_roto` que devuelve /auditoria/verificar.
   async function cargarCadena() {
     try {
-      const completa = await listarAuditoria({})
-      const ordenada = [...completa].sort(
+      const completa = await listarAuditoria({ limite: 1000 })
+      const ordenada = [...itemsDe(completa)].sort(
         (a, b) => new Date(a.creado_en).getTime() - new Date(b.creado_en).getTime(),
       )
       setCadena(ordenada)
@@ -67,10 +84,14 @@ export default function AuditoriaPage() {
   }
 
   useEffect(() => {
+    setPagina(1)
+  }, [filtros.accion, filtros.resultado, filtros.usuario, filtros.entidad])
+
+  useEffect(() => {
     const temporizador = setTimeout(cargar, 250)
     return () => clearTimeout(temporizador)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtros.accion, filtros.resultado, filtros.usuario, filtros.entidad])
+  }, [filtros.accion, filtros.resultado, filtros.usuario, filtros.entidad, pagina])
 
   useEffect(() => {
     cargarCadena()
@@ -218,6 +239,16 @@ export default function AuditoriaPage() {
               ))}
             </tbody>
           </table>
+        )}
+
+        {!cargando && registros.length > 0 && (
+          <Paginacion
+            pagina={pagina}
+            porPagina={paginacion.porPagina}
+            total={paginacion.total}
+            paginas={paginacion.paginas}
+            onPaginaCambio={setPagina}
+          />
         )}
       </section>
     </div>

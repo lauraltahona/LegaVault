@@ -150,7 +150,7 @@ def test_matriz_se_audita(client: TestClient) -> None:
         headers=_h(tok_admin),
     )
     assert r.status_code == 200
-    registros = r.json()
+    registros = r.json()["items"]
     assert any(
         reg["accion"] == "expediente_permisos" and reg["entidad_id"] == exp["id"]
         for reg in registros

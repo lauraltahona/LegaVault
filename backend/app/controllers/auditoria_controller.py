@@ -14,6 +14,7 @@ from app.schemas.auditoria_schema import (
     AuditoriaVerificacion,
     RegistroAuditoriaResponse,
 )
+from app.schemas.paginacion import RespuestaPaginada
 
 router = APIRouter(
     prefix="/auditoria",
@@ -22,7 +23,7 @@ router = APIRouter(
 )
 
 
-@router.get("", response_model=list[RegistroAuditoriaResponse], summary="Consultar la auditoría")
+@router.get("", response_model=RespuestaPaginada[RegistroAuditoriaResponse], summary="Consultar la auditoría")
 def listar(
     accion: AccionAuditoria | None = None,
     resultado: ResultadoAuditoria | None = None,
@@ -30,18 +31,25 @@ def listar(
     entidad: str | None = Query(None, description="Filtra por entidad exacta"),
     desde: datetime | None = None,
     hasta: datetime | None = None,
-    limite: int | None = Query(None, ge=1, le=1000),
-) -> list[RegistroAuditoriaResponse]:
-    registros = auditoria_service().listar(
+    limite: int | None = Query(None, ge=1, le=1000, description="Alias legacy (usar por_pagina)"),
+    pagina: int = Query(default=1, ge=1),
+    por_pagina: int | None = Query(default=None, ge=1, le=100),
+) -> RespuestaPaginada[RegistroAuditoriaResponse]:
+    pp = por_pagina if por_pagina is not None else (limite if limite is not None else 20)
+    registros, total = auditoria_service().listar(
         accion=accion,
         resultado=resultado,
         usuario=usuario,
         entidad=entidad,
         desde=desde,
         hasta=hasta,
-        limite=limite,
+        pagina=pagina,
+        por_pagina=pp,
+        paginar=True,
     )
-    return [RegistroAuditoriaResponse.model_validate(registro) for registro in registros]
+    return RespuestaPaginada.crear(
+        [RegistroAuditoriaResponse.model_validate(registro) for registro in registros], total, pagina, pp
+    )
 
 
 @router.get(

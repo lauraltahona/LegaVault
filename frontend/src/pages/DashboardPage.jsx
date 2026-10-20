@@ -12,6 +12,7 @@ import { listarUsuarios } from '../api/usuarios.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { ESTADOS_EXPEDIENTE, ROLES, SEVERIDADES, TIPOS_ALERTA } from '../constants.js'
 import { fechaHora, etiqueta } from '../utils/format.js'
+import { itemsDe } from '../utils/paginacion.js'
 
 export default function DashboardPage() {
   const { usuario, esAdmin } = useAuth()
@@ -32,8 +33,8 @@ export default function DashboardPage() {
           listarDocumentos(),
           listarBovedas(),
         ])
-        setExpedientes(exps)
-        setDocumentos(docs)
+        setExpedientes(itemsDe(exps))
+        setDocumentos(itemsDe(docs))
         setBovedas(bvs)
         if (esAdmin) {
           const [res, ultimas, users, audit] = await Promise.all([

@@ -140,15 +140,15 @@ def main() -> int:
     comprobar(expediente.json()["abogado_responsable_nombre"] == "Abogado de prueba", "Nombre del responsable enriquecido")
 
     comprobar(
-        len(cliente.get("/api/expedientes", headers=cabecera(token_abogado)).json()) == 1,
+        len(cliente.get("/api/expedientes", headers=cabecera(token_abogado)).json()["items"]) == 1,
         "El abogado ve su expediente",
     )
     comprobar(
-        len(cliente.get("/api/expedientes?q=ficticio", headers=cabecera(token_abogado)).json()) == 1,
+        len(cliente.get("/api/expedientes?q=ficticio", headers=cabecera(token_abogado)).json()["items"]) == 1,
         "Búsqueda de expedientes por texto",
     )
     comprobar(
-        len(cliente.get("/api/expedientes?estado=archivado", headers=cabecera(token_admin)).json()) == 0,
+        len(cliente.get("/api/expedientes?estado=archivado", headers=cabecera(token_admin)).json()["items"]) == 0,
         "Filtro por estado",
     )
 
@@ -181,11 +181,11 @@ def main() -> int:
     confidencial_id = confidencial.json()["id"]
 
     comprobar(
-        len(cliente.get("/api/documentos", headers=cabecera(token_abogado)).json()) == 2,
+        len(cliente.get("/api/documentos", headers=cabecera(token_abogado)).json()["items"]) == 2,
         "El abogado ve los dos documentos",
     )
     comprobar(
-        len(cliente.get("/api/documentos", headers=cabecera(token_asistente)).json()) == 1,
+        len(cliente.get("/api/documentos", headers=cabecera(token_asistente)).json()["items"]) == 1,
         "El asistente no ve el documento confidencial",
     )
     comprobar(
@@ -233,7 +233,7 @@ def main() -> int:
     )
     alertas_corrupcion = cliente.get(
         "/api/alertas?tipo=documento_corrupto", headers=cabecera(token_admin)
-    ).json()
+    ).json()["items"]
     comprobar(
         any(alerta["severidad"] == "critica" for alerta in alertas_corrupcion),
         "Se genera la alerta crítica DOCUMENTO_CORRUPO",
@@ -289,7 +289,7 @@ def main() -> int:
     )
     rechazos = cliente.get(
         "/api/alertas?tipo=documento_rechazado", headers=cabecera(token_admin)
-    ).json()
+    ).json()["items"]
     comprobar(
         any("malicioso.pdf" in alerta["mensaje"] for alerta in rechazos),
         "El rechazo genera la alerta DOCUMENTO_RECHAZADO",
@@ -297,7 +297,7 @@ def main() -> int:
     rechazos_auditoria = cliente.get(
         "/api/auditoria?accion=documento_rechazado&resultado=denegado",
         headers=cabecera(token_admin),
-    ).json()
+    ).json()["items"]
     comprobar(
         any("malicioso.pdf" in registro["detalle"] for registro in rechazos_auditoria),
         "El rechazo queda en la auditoría como denegado",
@@ -446,7 +446,7 @@ def main() -> int:
 
     alertas = cliente.get(
         "/api/alertas?tipo=cuenta_bloqueada", headers=cabecera(token_admin)
-    ).json()
+    ).json()["items"]
     comprobar(len(alertas) >= 1, "Se registra la alerta de cuenta bloqueada")
     comprobar(
         all("password" not in alerta["mensaje"].lower() for alerta in alertas),
@@ -464,9 +464,10 @@ def main() -> int:
     comprobar(login("abogado.smoke", "Abogado123!").status_code == 200, "La cuenta desbloqueada puede entrar")
 
     # --- Módulo 6: auditoría inalterable ---
-    registros = cliente.get("/api/auditoria", headers=cabecera(token_admin))
+    # El alias legacy `limite` trae la cadena completa para la comprobación.
+    registros = cliente.get("/api/auditoria?limite=1000", headers=cabecera(token_admin))
     comprobar(registros.status_code == 200, "El administrador consulta la auditoría")
-    acciones = {registro["accion"] for registro in registros.json()}
+    acciones = {registro["accion"] for registro in registros.json()["items"]}
     comprobar("login" in acciones, "La auditoría registra los inicios de sesión")
     comprobar("boveda_creada" in acciones, "La auditoría registra las acciones de bóveda")
     comprobar(
@@ -474,7 +475,7 @@ def main() -> int:
         "Un usuario no administrador no puede ver la auditoría (403)",
     )
     comprobar(
-        all(len(registro["hash_actual"]) == 64 for registro in registros.json()),
+        all(len(registro["hash_actual"]) == 64 for registro in registros.json()["items"]),
         "Cada registro de auditoría lleva su hash de encadenado",
     )
     verificacion = cliente.get("/api/auditoria/verificar", headers=cabecera(token_admin))

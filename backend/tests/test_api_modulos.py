@@ -99,7 +99,7 @@ def test_expedientes_crear_listar_filtrar(client: TestClient) -> None:
 
     r = client.get("/api/expedientes", headers=_h(tok_abogado))
     assert r.status_code == 200
-    assert any(e["id"] == exp["id"] for e in r.json())
+    assert any(e["id"] == exp["id"] for e in r.json()["items"])
 
     r = client.get("/api/expedientes", params={"estado": "abierto"}, headers=_h(tok_abogado))
     assert r.status_code == 200

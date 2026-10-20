@@ -75,7 +75,10 @@ class AuditoriaService:
         desde: datetime | None = None,
         hasta: datetime | None = None,
         limite: int | None = None,
-    ) -> list[RegistroAuditoria]:
+        pagina: int = 1,
+        por_pagina: int = 20,
+        paginar: bool = True,
+    ) -> tuple[list[RegistroAuditoria], int] | list[RegistroAuditoria]:
         objetivo_usuario = (usuario or "").strip().lower()
         objetivo_entidad = (entidad or "").strip().lower()
 
@@ -99,9 +102,15 @@ class AuditoriaService:
             key=lambda r: r.creado_en,
             reverse=True,
         )
-        if limite is not None:
+        if limite is not None and not paginar:
             registros = registros[:limite]
-        return registros
+            return registros
+        total = len(registros)
+        if not paginar:
+            return registros
+        inicio = (pagina - 1) * por_pagina
+        fin = inicio + por_pagina
+        return registros[inicio:fin], total
 
     def verificar_integridad(self) -> dict:
         """Comprueba la cadena y devuelve un resumen del resultado."""

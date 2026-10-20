@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react'
 
 import Aviso from '../components/Aviso.jsx'
 import Insignia, { tonoSeveridad } from '../components/Insignia.jsx'
+import Paginacion from '../components/Paginacion.jsx'
 import { listarAlertas, marcarAlertaLeida, marcarTodasLeidas, resumenAlertas } from '../api/alertas.js'
 import { SEVERIDADES, TIPOS_ALERTA, opciones } from '../constants.js'
 import { fechaHora, etiqueta } from '../utils/format.js'
+import { itemsDe } from '../utils/paginacion.js'
 
 export default function AlertasPage() {
   const [alertas, setAlertas] = useState([])
@@ -15,14 +17,29 @@ export default function AlertasPage() {
     usuario: '',
     solo_no_leidas: false,
   })
+  const [pagina, setPagina] = useState(1)
+  const [paginacion, setPaginacion] = useState({ total: 0, paginas: 0, porPagina: 20 })
   const [error, setError] = useState('')
   const [cargando, setCargando] = useState(true)
 
   async function cargar() {
     setCargando(true)
     try {
-      const [lista, totales] = await Promise.all([listarAlertas(filtros), resumenAlertas()])
-      setAlertas(lista)
+      const [respuesta, totales] = await Promise.all([
+        listarAlertas({ ...filtros, pagina, por_pagina: paginacion.porPagina }),
+        resumenAlertas(),
+      ])
+      const items = itemsDe(respuesta)
+      setAlertas(items)
+      setPaginacion((prev) =>
+        Array.isArray(respuesta)
+          ? { ...prev, total: items.length, paginas: 1 }
+          : {
+              total: respuesta?.total ?? 0,
+              paginas: respuesta?.paginas ?? 0,
+              porPagina: respuesta?.por_pagina || prev.porPagina,
+            },
+      )
       setResumen(totales)
     } catch (err) {
       setError(err.message)
@@ -32,10 +49,14 @@ export default function AlertasPage() {
   }
 
   useEffect(() => {
+    setPagina(1)
+  }, [filtros.tipo, filtros.severidad, filtros.usuario, filtros.solo_no_leidas])
+
+  useEffect(() => {
     const temporizador = setTimeout(cargar, 250)
     return () => clearTimeout(temporizador)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtros.tipo, filtros.severidad, filtros.usuario, filtros.solo_no_leidas])
+  }, [filtros.tipo, filtros.severidad, filtros.usuario, filtros.solo_no_leidas, pagina])
 
   async function alternarLeida(alerta) {
     try {
@@ -167,6 +188,16 @@ export default function AlertasPage() {
               ))}
             </tbody>
           </table>
+        )}
+
+        {!cargando && alertas.length > 0 && (
+          <Paginacion
+            pagina={pagina}
+            porPagina={paginacion.porPagina}
+            total={paginacion.total}
+            paginas={paginacion.paginas}
+            onPaginaCambio={setPagina}
+          />
         )}
       </section>
     </div>

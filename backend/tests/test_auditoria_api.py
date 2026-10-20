@@ -17,7 +17,7 @@ def test_solo_el_admin_consulta_la_auditoria(client, admin_headers, abogado, asi
 def test_el_login_queda_registrado(client, admin_headers):
     registros = client.get(
         "/api/auditoria", params={"accion": "login"}, headers=admin_headers
-    ).json()
+    ).json()["items"]
     assert any(
         reg["accion"] == "login" and reg["resultado"] == "ok" for reg in registros
     )
@@ -32,7 +32,7 @@ def test_el_logout_queda_registrado(client, admin_headers):
 
     registros = client.get(
         "/api/auditoria", params={"accion": "logout"}, headers=admin_headers
-    ).json()
+    ).json()["items"]
     assert any(reg["resultado"] == "ok" for reg in registros)
 
 
@@ -55,7 +55,7 @@ def test_una_accion_denegada_queda_auditada(client, abogado, intruso, expediente
     )
 
     registros = auditoria_service().listar(
-        accion=AccionAuditoria.ACCESO_DENEGADO, entidad="boveda"
+        accion=AccionAuditoria.ACCESO_DENEGADO, entidad="boveda", paginar=False
     )
     assert any(
         reg.entidad_id == boveda["id"] and reg.resultado == ResultadoAuditoria.DENEGADO
@@ -83,7 +83,7 @@ def test_intento_de_boveda_con_clave_erronea_queda_auditado(client, abogado, exp
         == 401
     )
     registros = auditoria_service().listar(
-        accion=AccionAuditoria.BOVEDA_ACCESO_FALLIDO, entidad="boveda"
+        accion=AccionAuditoria.BOVEDA_ACCESO_FALLIDO, entidad="boveda", paginar=False
     )
     assert any(
         reg.entidad_id == boveda["id"] and reg.resultado == ResultadoAuditoria.DENEGADO
@@ -100,14 +100,17 @@ def test_verificar_integridad(client, admin_headers):
 
 
 def test_resumen_coincide_con_el_listado(client, admin_headers):
-    registros = client.get("/api/auditoria", headers=admin_headers).json()
+    datos = client.get("/api/auditoria", headers=admin_headers).json()
     resumen = client.get("/api/auditoria/resumen", headers=admin_headers).json()
-    assert resumen["total"] == len(registros)
+    # El listado viene paginado: el total del resumen debe coincidir con el
+    # total declarado por la paginación (no con el tamaño de una página).
+    assert resumen["total"] == datos["total"]
+    assert datos["total"] >= len(datos["items"]) >= 1
     assert set(resumen["por_resultado"]) == {"ok", "denegado", "error"}
 
 
 def test_los_registros_incluyen_el_encadenado(client, admin_headers):
-    registros = client.get("/api/auditoria", headers=admin_headers).json()
+    registros = client.get("/api/auditoria", headers=admin_headers).json()["items"]
     assert registros
     for registro in registros:
         assert len(registro["hash_actual"]) == 64

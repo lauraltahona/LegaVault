@@ -80,7 +80,7 @@ def test_verificar_integridad_correcta(client: TestClient, abogado: dict, expedi
     assert r.status_code == 200
     assert any(
         registro["entidad_id"] == doc["id"] and registro["resultado"] == "ok"
-        for registro in r.json()
+        for registro in r.json()["items"]
     )
 
     # No se genera ninguna alerta de corrupción.
@@ -88,7 +88,7 @@ def test_verificar_integridad_correcta(client: TestClient, abogado: dict, expedi
         "/api/alertas", params={"tipo": "documento_corrupto"}, headers=_h(_login(client, "admin", "Admin123!"))
     )
     assert r.status_code == 200
-    assert not any("integridad_ok.txt" in alerta["mensaje"] for alerta in r.json())
+    assert not any("integridad_ok.txt" in alerta["mensaje"] for alerta in r.json()["items"])
 
 
 def test_verificar_integridad_corrupta_genera_alerta_y_auditoria(
@@ -116,7 +116,7 @@ def test_verificar_integridad_corrupta_genera_alerta_y_auditoria(
     admin = _h(_login(client, "admin", "Admin123!"))
     r = client.get("/api/alertas", params={"tipo": "documento_corrupto"}, headers=admin)
     assert r.status_code == 200
-    corrupcion = [a for a in r.json() if "integridad_rota.txt" in a["mensaje"]]
+    corrupcion = [a for a in r.json()["items"] if "integridad_rota.txt" in a["mensaje"]]
     assert corrupcion, "Debe existir la alerta DOCUMENTO_CORRUPO"
     assert all(alerta["severidad"] == "critica" for alerta in corrupcion)
 
@@ -128,7 +128,7 @@ def test_verificar_integridad_corrupta_genera_alerta_y_auditoria(
     assert r.status_code == 200
     assert any(
         registro["entidad_id"] == doc["id"] and registro["resultado"] == "error"
-        for registro in r.json()
+        for registro in r.json()["items"]
     ), "La corrupción debe quedar en la auditoría con resultado error"
 
 
@@ -149,7 +149,7 @@ def test_descarga_bloqueada_si_integridad_rota(
     r = client.get(
         "/api/alertas", params={"tipo": "documento_corrupto"}, headers=_h(_login(client, "admin", "Admin123!"))
     )
-    assert any("descarga_bloqueada.txt" in alerta["mensaje"] for alerta in r.json())
+    assert any("descarga_bloqueada.txt" in alerta["mensaje"] for alerta in r.json()["items"])
 
 
 def test_descarga_normal_sigue_funcionando(

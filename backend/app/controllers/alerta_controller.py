@@ -10,6 +10,7 @@ from app.controllers.dependencies import require_admin
 from app.core.constants import SeveridadAlerta, TipoAlerta
 from app.core.container import alerta_service
 from app.schemas.alerta_schema import AlertaResponse, AlertaResumen, MarcarLeidaRequest
+from app.schemas.paginacion import RespuestaPaginada
 
 router = APIRouter(
     prefix="/alertas",
@@ -18,7 +19,11 @@ router = APIRouter(
 )
 
 
-@router.get("", response_model=list[AlertaResponse], summary="Consultar alertas")
+@router.get(
+    "",
+    response_model=RespuestaPaginada[AlertaResponse],
+    summary="Consultar alertas (paginado)",
+)
 def listar(
     tipo: TipoAlerta | None = None,
     severidad: SeveridadAlerta | None = None,
@@ -26,18 +31,25 @@ def listar(
     desde: datetime | None = None,
     hasta: datetime | None = None,
     solo_no_leidas: bool = False,
-    limite: int | None = Query(None, ge=1, le=500),
-) -> list[AlertaResponse]:
-    alertas = alerta_service().listar(
+    limite: int | None = Query(None, ge=1, le=500, description="Alias legacy (usar por_pagina)"),
+    pagina: int = Query(default=1, ge=1),
+    por_pagina: int | None = Query(default=None, ge=1, le=100),
+) -> RespuestaPaginada[AlertaResponse]:
+    pp = por_pagina if por_pagina is not None else (limite if limite is not None else 20)
+    alertas, total = alerta_service().listar(
         tipo=tipo,
         severidad=severidad,
         usuario=usuario,
         desde=desde,
         hasta=hasta,
         solo_no_leidas=solo_no_leidas,
-        limite=limite,
+        pagina=pagina,
+        por_pagina=pp,
+        paginar=True,
     )
-    return [AlertaResponse.model_validate(alerta) for alerta in alertas]
+    return RespuestaPaginada.crear(
+        [AlertaResponse.model_validate(alerta) for alerta in alertas], total, pagina, pp
+    )
 
 
 @router.get("/resumen", response_model=AlertaResumen, summary="Resumen de alertas")

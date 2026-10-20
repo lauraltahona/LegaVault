@@ -258,7 +258,9 @@ describe('AuditoriaPage con la cadena integrada', () => {
     expect(eslabones[0].getAttribute('data-indice')).toBe('0')
     expect(eslabones[0].textContent).toContain('usuario0')
     expect(eslabones[2].textContent).toContain('usuario2')
-    expect(listarAuditoria).toHaveBeenCalledWith({})
+    // La página ahora pide la cadena completa con explícito `limite` alto
+    // (tolera array u objeto paginado gracias a `itemsDe`).
+    expect(listarAuditoria).toHaveBeenCalledWith({ limite: 1000 })
   })
 
   it('verifica la cadena desde la cabecera y la barre hasta el último eslabón', async () => {

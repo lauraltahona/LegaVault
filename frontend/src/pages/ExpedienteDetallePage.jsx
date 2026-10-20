@@ -11,6 +11,7 @@ import { obtenerExpediente } from '../api/expedientes.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { ESTADOS_EXPEDIENTE, TIPOS_PROCESO } from '../constants.js'
 import { etiqueta, fechaHora } from '../utils/format.js'
+import { itemsDe } from '../utils/paginacion.js'
 
 export default function ExpedienteDetallePage() {
   const { id } = useParams()
@@ -29,7 +30,7 @@ export default function ExpedienteDetallePage() {
         listarDocumentos({ expediente_id: id }),
       ])
       setExpediente(exp)
-      setDocumentos(docs)
+      setDocumentos(itemsDe(docs))
     } catch (err) {
       setError(err.message)
     } finally {

@@ -99,7 +99,10 @@ class AlertaService:
         hasta: datetime | None = None,
         solo_no_leidas: bool = False,
         limite: int | None = None,
-    ) -> list[Alerta]:
+        pagina: int = 1,
+        por_pagina: int = 20,
+        paginar: bool = True,
+    ) -> tuple[list[Alerta], int] | list[Alerta]:
         objetivo = (usuario or "").strip().lower()
         alertas = self._repo.list_all()
 
@@ -120,9 +123,15 @@ class AlertaService:
 
         resultado = [alerta for alerta in alertas if coincide(alerta)]
         resultado.sort(key=lambda alerta: alerta.creado_en, reverse=True)
-        if limite is not None:
+        if limite is not None and not paginar:
             resultado = resultado[:limite]
-        return resultado
+            return resultado
+        total = len(resultado)
+        if not paginar:
+            return resultado
+        inicio = (pagina - 1) * por_pagina
+        fin = inicio + por_pagina
+        return resultado[inicio:fin], total
 
     def resumen(self) -> dict:
         """Conteos agregados para el panel de alertas del administrador."""

@@ -265,7 +265,7 @@ def test_ejecutable_disfrazado_de_pdf_rechazado(
 
     r = client.get("/api/alertas", params={"tipo": "documento_rechazado"}, headers=admin)
     assert r.status_code == 200
-    rechazos = [a for a in r.json() if "malicioso.pdf" in a["mensaje"]]
+    rechazos = [a for a in r.json()["items"] if "malicioso.pdf" in a["mensaje"]]
     assert rechazos, "Debe existir la alerta DOCUMENTO_RECHAZADO"
     assert all(a["severidad"] == "advertencia" for a in rechazos)
 
@@ -275,7 +275,7 @@ def test_ejecutable_disfrazado_de_pdf_rechazado(
         headers=admin,
     )
     assert r.status_code == 200
-    assert any("malicioso.pdf" in registro["detalle"] for registro in r.json()), (
+    assert any("malicioso.pdf" in registro["detalle"] for registro in r.json()["items"]), (
         "El rechazo debe quedar en la auditoría como denegado"
     )
 
@@ -320,14 +320,14 @@ def test_rechazo_no_crea_documento_ni_archivo(
     token = abogado["headers"]["Authorization"].split()[1]
     antes = {
         d["nombre_original"]
-        for d in client.get("/api/documentos", headers=_h(token)).json()
+        for d in client.get("/api/documentos", headers=_h(token)).json()["items"]
     }
     r = _subir(client, token, expediente["id"], "fantasma.pdf", EXE)
     assert r.status_code == 422
 
     despues = {
         d["nombre_original"]
-        for d in client.get("/api/documentos", headers=_h(token)).json()
+        for d in client.get("/api/documentos", headers=_h(token)).json()["items"]
     }
     assert despues == antes
     assert not list(settings.uploads_dir.glob("fantasma*"))
@@ -352,10 +352,10 @@ def test_rechazo_no_filtra_contenido_en_alertas_ni_auditoria(
     admin = _h(_login(client, "admin", "Admin123!"))
     alertas = client.get(
         "/api/alertas", params={"tipo": "documento_rechazado"}, headers=admin
-    ).json()
+    ).json()["items"]
     auditoria = client.get(
         "/api/auditoria", params={"accion": "documento_rechazado"}, headers=admin
-    ).json()
+    ).json()["items"]
 
     assert marcador not in r.text
     assert all(marcador not in a["mensaje"] for a in alertas)

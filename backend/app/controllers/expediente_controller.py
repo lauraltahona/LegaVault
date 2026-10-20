@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 
 from app.controllers.dependencies import get_current_user
 from app.core.constants import EstadoExpediente, TipoProceso
@@ -15,6 +15,7 @@ from app.schemas.expediente_schema import (
     ExpedienteUpdate,
     PermisosUpdate,
 )
+from app.schemas.paginacion import RespuestaPaginada
 
 router = APIRouter(prefix="/expedientes", tags=["Expedientes"])
 
@@ -29,18 +30,32 @@ def _to_response(exp: Expediente) -> ExpedienteResponse:
     return respuesta
 
 
-@router.get("", response_model=list[ExpedienteResponse], summary="Listar / buscar expedientes")
+@router.get(
+    "",
+    response_model=RespuestaPaginada[ExpedienteResponse],
+    summary="Listar / buscar expedientes (paginado)",
+)
 def listar(
     q: str | None = None,
     estado: EstadoExpediente | None = None,
     tipo_proceso: TipoProceso | None = None,
     abogado_id: str | None = None,
+    limite: int | None = Query(None, ge=1, le=1000, description="Alias legacy (usar por_pagina)"),
+    pagina: int = Query(default=1, ge=1),
+    por_pagina: int | None = Query(default=None, ge=1, le=100),
     usuario: User = Depends(get_current_user),
-) -> list[ExpedienteResponse]:
+) -> RespuestaPaginada[ExpedienteResponse]:
+    pp = por_pagina if por_pagina is not None else (limite if limite is not None else 20)
     expedientes = expediente_service().listar(
         usuario, q=q, estado=estado, tipo_proceso=tipo_proceso, abogado_id=abogado_id
     )
-    return [_to_response(exp) for exp in expedientes]
+    # El permiso se resuelve en el servicio y la paginación aquí (el listado
+    # ya está filtrado para este usuario); el total permite navegar la UI.
+    total = len(expedientes)
+    inicio = (pagina - 1) * pp
+    return RespuestaPaginada.crear(
+        [_to_response(exp) for exp in expedientes[inicio : inicio + pp]], total, pagina, pp
+    )
 
 
 @router.post(
