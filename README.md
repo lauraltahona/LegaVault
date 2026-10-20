@@ -39,10 +39,12 @@ backend/
   scripts/         # seed.py (datos demo) y smoke_test.py (pruebas E2E)
 
 frontend/          # V — interfaz React (Vite)
-  src/api/         # cliente HTTP centralizado
-  src/context/     # sesión (AuthContext)
-  src/components/  # layout, modal, tablas, insignias
-  src/pages/       # login, panel, expedientes, documentos, bóveda, usuarios, alertas, auditoría
+  src/api/         # cliente HTTP centralizado (emite avisos globales de error)
+  src/context/     # sesión (AuthContext) y notificaciones (ToastContext)
+  src/components/  # layout, modal, tablas, insignias, toasts
+  src/pages/       # login, panel, expedientes, documentos, bóveda, usuarios, alertas, auditoría, 404
+  src/utils/       # bus de notificaciones y formato de fechas
+  tests/           # pruebas de interfaz (Vitest + React Testing Library)
 ```
 
 Reglas de diseño:
@@ -136,6 +138,19 @@ permisos, repositorio JSON, criptografía de la bóveda, API de los módulos 1, 
 ```powershell
 cd backend
 .\.venv\Scripts\python.exe -m pytest
+```
+
+Pruebas de interfaz con **Vitest + React Testing Library** (`frontend/tests/`):
+la página 404 y el enrutamiento (con y sin sesión, más regresión de las rutas
+conocidas), el sistema de toasts (apertura, cierre manual, auto-cierre,
+deduplicación y límite visible), los avisos globales del cliente HTTP (sesión
+expirada, backend inaccesible con mensaje amigable y error 5xx) y el bus de
+notificaciones.
+
+```powershell
+cd frontend
+npm install
+npm run test
 ```
 
 ## Configuración

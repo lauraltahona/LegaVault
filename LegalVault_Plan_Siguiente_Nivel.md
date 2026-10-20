@@ -403,7 +403,7 @@ con alma educativa**, manteniendo intactos su idea, su arquitectura y lo que ya 
 | 6 | **Rate limiting por IP en login** (token bucket en memoria) | Backend (poco) | 1–2 h | Aislado en `core/`; solo afecta al endpoint de login |
 | 7 | **Visualización animada de la cadena de auditoría** (eslabones con hash truncado + resaltar el roto) | Solo frontend | 2–3 h | Ya existe `GET /auditoria/verificar`; es **el remate visual** de la demo de auditoría |
 | 8 | **Medidor de entropía de contraseña** | Frontend (+1 endpoint opcional) | 2–3 h | Cálculo local en JS; efecto educativo inmediato en el formulario |
-| 9 | **Página 404 propia + toast de errores** (pulido) | Solo frontend | 1 h | Cosmético, sube la percepción de calidad |
+| 9 | **Página 404 propia + toast de errores** (pulido) | Solo frontend | 1 h | Cosmético, sube la percepción de calidad → ✅ **implementado 2026-10-19** (`src/pages/NotFoundPage.jsx` para rutas desconocidas en lugar de la redirección silenciosa a `/`, con la ruta fallida y salida según sesión; capa global de toasts `ToastContext` + bus `utils/notificar.js` con avisos de **sesión expirada (401)**, **backend inaccesible** (mensaje amigable en español) y **error de servidor (5xx)**, deduplicación y red de seguridad de promesas rechazadas; los 4xx contextuales siguen solo inline; 29 pruebas nuevas con Vitest + React Testing Library — `npm run test`) |
 
 **Combo realista de una tarde/noche:** Nivel 1 completo (~1–1.5 días de trabajo
 efectivo; si solo hay unas horas, el **Top 4: #1, #3, #7, #2** — son los que más se notan

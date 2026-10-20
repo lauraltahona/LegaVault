@@ -3,6 +3,10 @@
 // - Adjunta automáticamente el token JWT de la sesión.
 // - Normaliza los errores del backend en un objeto `ApiError`.
 // - Notifica a la aplicación cuando un token deja de ser válido (401).
+// - Emite avisos globales (toast) para los fallos que no dependen del contexto
+//   de la pantalla: sesión expirada, backend inaccesible y errores de servidor.
+
+import { notificar } from '../utils/notificar.js'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 const TOKEN_KEY = 'legalvault_token'
@@ -47,6 +51,7 @@ export async function apiFetch(path, opciones = {}) {
 
   const headers = {}
   const token = getToken()
+  const habiaToken = Boolean(token)
   if (token) headers.Authorization = `Bearer ${token}`
 
   let payload = body
@@ -57,11 +62,32 @@ export async function apiFetch(path, opciones = {}) {
     payload = JSON.stringify(body)
   }
 
-  const respuesta = await fetch(`${API_URL}${path}`, { method, headers, body: payload })
+  let respuesta
+  try {
+    respuesta = await fetch(`${API_URL}${path}`, { method, headers, body: payload })
+  } catch {
+    // El backend no respondió (apagado, red caída…): mensaje amigable en
+    // español + aviso global, porque esta falla no siempre llega a la pantalla.
+    const mensaje =
+      'No se pudo conectar con el servidor. Comprueba que esté en ejecución e inténtalo de nuevo.'
+    notificar({ tipo: 'error', mensaje, origen: 'conexion' })
+    throw new ApiError(mensaje, 0)
+  }
 
-  if (respuesta.status === 401 && !omitirManejador) {
-    clearToken()
-    if (alNoAutorizado) alNoAutorizado()
+  if (respuesta.status === 401) {
+    // Aviso global de sesión expirada/inválida (nunca en un fallo de
+    // credenciales del login: ahí el error queda inline en el formulario).
+    if (habiaToken && !path.startsWith('/auth/login')) {
+      notificar({
+        tipo: 'error',
+        mensaje: 'Tu sesión ha expirado. Vuelve a iniciar sesión para continuar.',
+        origen: 'sesion',
+      })
+    }
+    if (!omitirManejador) {
+      clearToken()
+      if (alNoAutorizado) alNoAutorizado()
+    }
   }
 
   if (!respuesta.ok) {
@@ -71,6 +97,13 @@ export async function apiFetch(path, opciones = {}) {
       detalle = datos?.detail || detalle
     } catch {
       // El cuerpo no era JSON; se conserva el mensaje por defecto.
+    }
+    if (respuesta.status >= 500) {
+      notificar({
+        tipo: 'error',
+        mensaje: `El servidor respondió con un error (HTTP ${respuesta.status}). Inténtalo de nuevo en unos segundos.`,
+        origen: 'servidor',
+      })
     }
     throw new ApiError(detalle, respuesta.status)
   }

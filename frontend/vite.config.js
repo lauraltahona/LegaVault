@@ -5,6 +5,13 @@ import react from '@vitejs/plugin-react'
 // y Vite redirige la petición al backend de FastAPI.
 export default defineConfig({
   plugins: [react()],
+  // Configuración de Vitest (npm run test): jsdom + globals de Vitest.
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    include: ['tests/**/*.{test,spec}.{js,jsx}'],
+    setupFiles: ['tests/setup.js'],
+  },
   server: {
     port: 5173,
     proxy: {
