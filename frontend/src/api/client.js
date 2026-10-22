@@ -115,10 +115,8 @@ export async function apiFetch(path, opciones = {}) {
   return texto ? JSON.parse(texto) : null
 }
 
-/** Descarga un archivo protegido y lanza la descarga en el navegador. */
-export async function descargarArchivo(path, nombre) {
-  const respuesta = await apiFetch(path, { raw: true })
-  const blob = await respuesta.blob()
+/** Lanza la descarga de un blob en el navegador. */
+function descargarBlob(blob, nombre) {
   const url = URL.createObjectURL(blob)
   const enlace = document.createElement('a')
   enlace.href = url
@@ -127,4 +125,22 @@ export async function descargarArchivo(path, nombre) {
   enlace.click()
   enlace.remove()
   URL.revokeObjectURL(url)
+}
+
+/** Descarga un archivo protegido y lanza la descarga en el navegador. */
+export async function descargarArchivo(path, nombre) {
+  const respuesta = await apiFetch(path, { raw: true })
+  descargarBlob(await respuesta.blob(), nombre)
+}
+
+/**
+ * Descarga un archivo protegido con una petición **POST** y cuerpo JSON.
+ *
+ * Se usa para los adjuntos de la bóveda cifrada: la contraseña del fondo
+ * viaja en el cuerpo, nunca en la query string (en la URL acabaría en los
+ * registros del servidor y en la cabecera `Referer`).
+ */
+export async function descargarArchivoPost(path, nombre, body, opciones = {}) {
+  const respuesta = await apiFetch(path, { method: 'POST', body, raw: true, ...opciones })
+  descargarBlob(await respuesta.blob(), nombre)
 }

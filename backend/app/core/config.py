@@ -105,6 +105,22 @@ class Settings:
         default_factory=lambda: _env_int("LEGALVAULT_BOVEDA_BUCKET_MB", 1)
     )
 
+    # --- Bóveda cifrada: adjuntos (Módulo 4, mejora M4.1 / Fase 6) ---
+    # Capacidad de adjuntos **por fondo** (cada vista de la bóveda tiene la
+    # suya). Define el tamaño del blob `data/bovedas/{id}/adjuntos.bin`, que
+    # es SIEMPRE el doble del segmento de un fondo (2 x segmento_bytes), con
+    # independencia del contenido: así el tamaño en disco no delata nada.
+    boveda_adjuntos_mb: int = field(
+        default_factory=lambda: _env_int("LEGALVAULT_BOVEDA_ADJUNTOS_MB", 5)
+    )
+
+    # Tamaño máximo del chunk en que se cifra cada archivo dentro del blob.
+    # El tamaño efectivo nunca supera la capacidad menos la etiqueta GCM, de
+    # modo que la capacidad mínima (1 MB) siempre admita al menos un slot.
+    boveda_chunk_kb: int = field(
+        default_factory=lambda: _env_int("LEGALVAULT_BOVEDA_CHUNK_KB", 1024)
+    )
+
     # --- Reglas de correlación de alertas (Módulo 7, mejora #13) ---
     # Umbrales del servicio que detecta patrones sospechosos analizando
     # varias alertas en conjunto (detección básica de anomalías, estilo SIEM).
@@ -128,9 +144,16 @@ class Settings:
     def uploads_dir(self) -> Path:
         return self.data_dir / "uploads"
 
+    @property
+    def bovedas_dir(self) -> Path:
+        """Directorio de los blobs de adjuntos de las bóvedas (Fase 6)."""
+
+        return self.data_dir / "bovedas"
+
     def ensure_directories(self) -> None:
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.uploads_dir.mkdir(parents=True, exist_ok=True)
+        self.bovedas_dir.mkdir(parents=True, exist_ok=True)
 
 
 settings = Settings()

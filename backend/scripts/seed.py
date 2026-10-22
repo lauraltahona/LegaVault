@@ -103,7 +103,7 @@ def ejecutar() -> None:
         expediente_demo = expediente_repository().first(
             lambda exp: exp.identificador == "EXP-2026-001"
         )
-        boveda_service().crear(
+        boveda = boveda_service().crear(
             {
                 "nombre": "Reserva estratégica del caso",
                 "descripcion": "Bóveda de demostración con doble fondo (datos ficticios).",
@@ -117,7 +117,34 @@ def ejecutar() -> None:
                     "Estrategia reservada: evaluación interna del riesgo y margen de "
                     "negociación confidencial."
                 ),
+                # Fase 6: la bóveda de demo nace ya en formato v2 (con
+                # adjuntos), con 5 MB de capacidad por fondo.
+                "adjuntos_mb": 5,
             },
+            actor=abogado,
+        )
+        # Un archivo de ejemplo en **cada** fondo: los bytes van al blob de
+        # tamaño fijo y los metadatos al JSON cifrado de su vista.
+        boveda_service().adjuntar(
+            boveda.id,
+            "BovedaPublica123!",
+            nombre="notas_trabajo.txt",
+            contenido=(
+                "Notas de trabajo (contenido ficticio de demostración).\n"
+                "Agenda de plazos y contactos del cliente.\n"
+            ).encode("utf-8"),
+            titulo="Notas de trabajo",
+            actor=abogado,
+        )
+        boveda_service().adjuntar(
+            boveda.id,
+            "BovedaReservada123!",
+            nombre="evaluacion_riesgo.txt",
+            contenido=(
+                "Evaluación interna del riesgo (contenido ficticio y reservado).\n"
+                "Margen de negociación confidencial.\n"
+            ).encode("utf-8"),
+            titulo="Evaluación del riesgo",
             actor=abogado,
         )
 

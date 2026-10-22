@@ -88,6 +88,12 @@ class TipoAlerta(str, Enum):
     BOVEDA_EDITADA = "boveda_editada"
     BOVEDA_CREDENCIALES = "boveda_credenciales"
     BOVEDA_ELIMINADA = "boveda_eliminada"
+    # Adjuntos de la bóveda (Módulo 4, mejora M4.1 / Fase 6).
+    BOVEDA_ADJUNTO_CARGADO = "boveda_adjunto_cargado"
+    BOVEDA_ADJUNTO_DESCARGADO = "boveda_adjunto_descargado"
+    BOVEDA_ADJUNTO_ELIMINADO = "boveda_adjunto_eliminado"
+    BOVEDA_ADJUNTO_CORRUPTO = "boveda_adjunto_corrupto"
+    BOVEDA_ADJUNTO_RECHAZADO = "boveda_adjunto_rechazado"
     # Generada por el servicio de correlación (Módulo 7, mejora #13): resume
     # un patrón sospechoso detectado al analizar varias alertas en conjunto.
     PATRON_SOSPECHOSO = "patron_sospechoso"
@@ -142,6 +148,11 @@ class AccionAuditoria(str, Enum):
     BOVEDA_EDITADA = "boveda_editada"
     BOVEDA_CREDENCIALES = "boveda_credenciales"
     BOVEDA_ELIMINADA = "boveda_eliminada"
+    BOVEDA_ADJUNTO_CARGADO = "boveda_adjunto_cargado"
+    BOVEDA_ADJUNTO_DESCARGADO = "boveda_adjunto_descargado"
+    BOVEDA_ADJUNTO_ELIMINADO = "boveda_adjunto_eliminado"
+    BOVEDA_ADJUNTO_CORRUPTO = "boveda_adjunto_corrupto"
+    BOVEDA_ADJUNTO_RECHAZADO = "boveda_adjunto_rechazado"
     EXPEDIENTE_PERMISOS = "expediente_permisos"
     AUDITORIA_VERIFICADA = "auditoria_verificada"
 

@@ -19,6 +19,7 @@ os.environ["LEGALVAULT_MAX_INTENTOS"] = "3"
 
 from fastapi.testclient import TestClient  # noqa: E402
 
+from app.core import boveda_adjuntos  # noqa: E402
 from app.core.config import settings  # noqa: E402
 from app.main import app  # noqa: E402
 
@@ -433,6 +434,72 @@ def main() -> int:
         ).status_code
         == 422,
         "Las dos contraseñas deben ser diferentes (422)",
+    )
+
+    # --- Módulo 4 (Fase 6): adjuntos por fondo ---
+    # 1) Subir -> descargar -> comparar bytes.
+    pdf_adjunto = b"%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF\n"
+    subida = cliente.post(
+        f"/api/bovedas/{boveda_id}/adjuntos",
+        headers=cabecera(token_abogado),
+        data={"password": PW_VISIBLE, "titulo": "Contrato"},
+        files={"archivo": ("contrato.pdf", io.BytesIO(pdf_adjunto), "application/pdf")},
+    )
+    comprobar(subida.status_code == 201, "Adjuntar un archivo al fondo principal")
+    adjunto_id = subida.json()["id"]
+    descarga_adjunto = cliente.post(
+        f"/api/bovedas/{boveda_id}/adjuntos/{adjunto_id}/descargar",
+        headers=cabecera(token_abogado),
+        json={"password": PW_VISIBLE},
+    )
+    comprobar(
+        descarga_adjunto.status_code == 200 and descarga_adjunto.content == pdf_adjunto,
+        "Los bytes descargados son idénticos a los subidos",
+    )
+    comprobacion = cliente.post(
+        f"/api/bovedas/{boveda_id}/adjuntos/{adjunto_id}/verificar-integridad",
+        headers=cabecera(token_abogado),
+        json={"password": PW_VISIBLE},
+    )
+    comprobar(
+        comprobacion.status_code == 200 and comprobacion.json()["integro"] is True,
+        "La verificación de integridad del adjunto es correcta",
+    )
+
+    # 2) El tamaño del blob es idéntico aunque solo se haya adjuntado a un fondo.
+    ruta_blob = settings.bovedas_dir / boveda_id / "adjuntos.bin"
+    tamano_blob = ruta_blob.stat().st_size
+    comprobar(
+        tamano_blob == 2 * boveda_adjuntos.bytes_segmento(
+            5 * 1024 * 1024, settings.boveda_chunk_kb
+        ),
+        "El blob de adjuntos mide 2 x segmento, con independencia del contenido",
+    )
+    boveda_vacia = cliente.post(
+        "/api/bovedas",
+        headers=cabecera(token_abogado),
+        json={
+            "nombre": "Bóveda sin adjuntos (smoke)",
+            "expediente_id": expediente_id,
+            "password_visible": PW_VISIBLE,
+            "password_confidencial": PW_RESERVADA,
+        },
+    ).json()
+    comprobar(
+        (settings.bovedas_dir / boveda_vacia["id"] / "adjuntos.bin").stat().st_size
+        == tamano_blob,
+        "Una bóveda sin adjuntos ocupa exactamente los mismos bytes en disco",
+    )
+
+    # 3) Ni el nombre ni el contenido del archivo aparecen en claro en disco.
+    contenido_json = (settings.data_dir / "bovedas.json").read_text(encoding="utf-8")
+    comprobar(
+        "contrato.pdf" not in contenido_json,
+        "El nombre del adjunto no aparece en claro en bovedas.json",
+    )
+    comprobar(
+        b"%PDF-1.4" not in ruta_blob.read_bytes(),
+        "El contenido del adjunto no aparece en claro en adjuntos.bin",
     )
 
     # --- Módulo 7: bloqueo y alertas ---

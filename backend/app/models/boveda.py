@@ -5,6 +5,13 @@ diccionario ``{"salt", "nonce", "datos"}`` (valores en base64) que solo puede
 descifrarse con su contraseña. El modelo **no** contiene contraseñas ni claves,
 y no lleva ninguna etiqueta que revele qué vista es "visible" y cuál
 "confidencial": las dos son indistinguibles.
+
+Desde la **Fase 6 (mejora M4.1)** la bóveda puede además admitir **archivos
+adjuntos** por fondo. Los metadatos de los adjuntos viven **dentro** del JSON
+cifrado de la vista y sus bytes en un blob aparte de tamaño fijo
+(``data/bovedas/{id}/adjuntos.bin``). El campo ``formato`` distingue la bóveda
+heredada (1, solo texto) de la nueva (2, con adjuntos); las bóvedas existentes
+se leen como v1 sin tocar el JSON.
 """
 
 from __future__ import annotations
@@ -26,6 +33,12 @@ class Boveda(BaseEntity):
     # Cubeta de padding (mejora #15), en MB. 0 = formato heredado sin padding.
     # Es la *misma* para las dos vistas, de modo que ambas ocupan igual en disco.
     bucket_mb: int = 0
+    # Formato de la bóveda: 1 = heredado (solo texto), 2 = con adjuntos (Fase 6).
+    # Las bóvedas existentes no tienen este campo: se leen como v1 sin tocar
+    # el JSON (migración explícita, nunca automática).
+    formato: int = 1
+    # Capacidad de adjuntos por fondo, en MB. 0 = sin adjuntos (bóveda v1).
+    adjuntos_mb: int = 0
     activo: bool = True
 
     @classmethod
@@ -40,5 +53,7 @@ class Boveda(BaseEntity):
             creado_por_id=data.get("creado_por_id", ""),
             vistas=list(data.get("vistas") or []),
             bucket_mb=int(data.get("bucket_mb") or 0),
+            formato=int(data.get("formato") or 1),
+            adjuntos_mb=int(data.get("adjuntos_mb") or 0),
             activo=bool(data.get("activo", True)),
         )

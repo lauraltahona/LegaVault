@@ -256,6 +256,32 @@ def test_cada_boveda_tiene_dos_vistas_y_ningun_secreto(crear_boveda):
             assert set(vista) == {"salt", "nonce", "datos"}
 
 
+# --- no regresión: adjuntos (Fase 6) --------------------------------------
+def test_desbloquear_siempre_devuelve_adjuntos_y_version(client, abogado, crear_boveda):
+    """La respuesta ampliada mantiene el contrato y añade los adjuntos."""
+
+    boveda = crear_boveda().json()
+    respuesta = _desbloquear(client, abogado["headers"], boveda["id"], PW_VISIBLE)
+    assert respuesta.status_code == 200
+    cuerpo = respuesta.json()
+    assert cuerpo["adjuntos"] == []
+    assert cuerpo["version"] == 2
+
+
+def test_la_respuesta_no_expone_la_clave_de_los_adjuntos(client, abogado, crear_boveda):
+    boveda = crear_boveda().json()
+    cuerpo = _desbloquear(client, abogado["headers"], boveda["id"], PW_VISIBLE).json()
+    # El bloque interno de adjuntos (clave, nonce base, contador) no sale.
+    assert "clave" not in cuerpo
+    assert "iv_base" not in cuerpo
+    assert "contador" not in cuerpo
+
+
+def test_crear_boveda_admite_capacidad_de_adjuntos(client, abogado, crear_boveda):
+    assert crear_boveda(adjuntos_mb=1).status_code == 201
+    assert crear_boveda(adjuntos_mb=7).status_code == 422
+
+
 # --- padding por cubetas (mejora #15) ------------------------------------
 def test_ambas_vistas_ocupan_exactamente_lo_mismo(crear_boveda):
     crear_boveda(contenido_visible="Corto.", contenido_confidencial="X" * 5000)

@@ -63,6 +63,11 @@ export const TIPOS_ALERTA = {
   boveda_editada: 'Bóveda editada',
   boveda_credenciales: 'Credenciales de bóveda',
   boveda_eliminada: 'Bóveda eliminada',
+  boveda_adjunto_cargado: 'Adjunto cargado en bóveda',
+  boveda_adjunto_descargado: 'Adjunto descargado de bóveda',
+  boveda_adjunto_eliminado: 'Adjunto eliminado de bóveda',
+  boveda_adjunto_corrupto: 'Integridad de adjunto rota',
+  boveda_adjunto_rechazado: 'Adjunto rechazado (tipo de archivo)',
   patron_sospechoso: 'Patrón sospechoso (correlación)',
 }
 
@@ -104,6 +109,11 @@ export const ACCIONES_AUDITORIA = {
   boveda_editada: 'Bóveda editada',
   boveda_credenciales: 'Credenciales de bóveda',
   boveda_eliminada: 'Bóveda eliminada',
+  boveda_adjunto_cargado: 'Adjunto cargado en bóveda',
+  boveda_adjunto_descargado: 'Adjunto descargado de bóveda',
+  boveda_adjunto_eliminado: 'Adjunto eliminado de bóveda',
+  boveda_adjunto_corrupto: 'Integridad de adjunto rota (SHA-256)',
+  boveda_adjunto_rechazado: 'Adjunto rechazado (magic bytes)',
   expediente_permisos: 'Permisos de expediente',
   auditoria_verificada: 'Auditoría verificada',
 }
@@ -132,6 +142,15 @@ export const EXTENSIONES_ARCHIVO_PERMITIDAS = [
 
 // Valor para el atributo `accept` del input de tipo archivo.
 export const ARCHIVO_ACCEPT = EXTENSIONES_ARCHIVO_PERMITIDAS.join(',')
+
+// Escalera de capacidades de adjuntos **por fondo** (Fase 6). El servidor
+// rechaza cualquier valor que no esté en la lista: una capacidad discreta
+// evita que el tamaño del blob filtre el volumen real de cada fondo.
+export const CAPACIDADES_ADJUNTOS_MB = [
+  { valor: 1, etiqueta: '1 MB por fondo' },
+  { valor: 5, etiqueta: '5 MB por fondo' },
+  { valor: 25, etiqueta: '25 MB por fondo' },
+]
 
 // Convierte un objeto de etiquetas en una lista de opciones para <select>.
 export function opciones(mapa) {
