@@ -34,7 +34,7 @@ export default function LoginPage() {
         <div className="login-marca">
           <span className="marca-logo">⚖️</span>
           <h1>LegalVault</h1>
-          <p>Sistema seguro de gestión de expedientes jurídicos</p>
+          <p>Custodia criptográfica y gestión de expedientes jurídicos</p>
         </div>
 
         <Aviso tipo="error">{error}</Aviso>
@@ -43,6 +43,7 @@ export default function LoginPage() {
           <span>Usuario</span>
           <input
             type="text"
+            placeholder="Introduce tu usuario..."
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             autoComplete="username"
@@ -55,6 +56,7 @@ export default function LoginPage() {
           <span>Contraseña</span>
           <input
             type="password"
+            placeholder="Introduce tu contraseña..."
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password"
@@ -63,12 +65,12 @@ export default function LoginPage() {
         </label>
 
         <button type="submit" className="boton boton-primario boton-bloque" disabled={enviando}>
-          {enviando ? 'Accediendo…' : 'Iniciar sesión'}
+          {enviando ? 'Verificando credenciales…' : 'Acceder al Sistema Seguramente →'}
         </button>
 
-        <p className="login-ayuda">
-          Demo: <code>admin / Admin123!</code>
-        </p>
+        <div className="login-ayuda">
+          <span>Credencial demo rápida:</span> <code>admin / Admin123!</code>
+        </div>
       </form>
     </div>
   )

@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 
 import Aviso from '../components/Aviso.jsx'
 import Insignia, { tonoEstado, tonoSeveridad } from '../components/Insignia.jsx'
+import { GraficoDonut, GraficoBarras } from '../components/GraficosDashboard.jsx'
 import { listarAlertas, resumenAlertas } from '../api/alertas.js'
 import { resumenAuditoria } from '../api/auditoria.js'
 import { listarBovedas } from '../api/bovedas.js'
@@ -78,6 +79,49 @@ export default function DashboardPage() {
 
   const recientes = expedientes.slice(0, 6)
 
+  // Datos para los gráficos interactivos
+  const datosEstadosExpediente = useMemo(() => {
+    const conteo = {}
+    expedientes.forEach((exp) => {
+      const est = exp.estado || 'otro'
+      conteo[est] = (conteo[est] || 0) + 1
+    })
+
+    const colores = {
+      abierto: '#10b981',
+      en_tramite: '#3b82f6',
+      suspendido: '#f59e0b',
+      cerrado: '#64748b',
+      archivado: '#94a3b8',
+    }
+
+    return Object.entries(ESTADOS_EXPEDIENTE)
+      .map(([clave, nombre]) => ({
+        etiqueta: nombre,
+        valor: conteo[clave] || 0,
+        color: colores[clave] || '#cbd5e1',
+      }))
+      .filter((item) => item.valor > 0 || expedientes.length === 0)
+  }, [expedientes])
+
+  const datosTiposDocumento = useMemo(() => {
+    const conteo = {}
+    documentos.forEach((doc) => {
+      const t = doc.tipo_documento || doc.tipo || 'otro'
+      conteo[t] = (conteo[t] || 0) + 1
+    })
+
+    const paleta = ['#2563eb', '#059669', '#d97706', '#7c3aed', '#db2777', '#0891b2']
+    return Object.entries(conteo)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([tipo, cant], idx) => ({
+        etiqueta: tipo.charAt(0).toUpperCase() + tipo.slice(1).replace('_', ' '),
+        valor: cant,
+        color: paleta[idx % paleta.length],
+      }))
+  }, [documentos])
+
   return (
     <div className="pagina">
       <header className="pagina-cabecera">
@@ -98,6 +142,26 @@ export default function DashboardPage() {
             <span className="tarjeta-etiqueta">{tarjeta.etiqueta}</span>
           </div>
         ))}
+      </section>
+
+      {/* Sección con gráficos sencillos y modernos */}
+      <section className="seccion-graficos">
+        <GraficoDonut
+          titulo="Distribución de Expedientes por Estado"
+          datos={datosEstadosExpediente}
+          totalEtiqueta="Expedientes"
+        />
+        <GraficoBarras
+          titulo="Documentos más Frecuentes por Tipo"
+          datos={
+            datosTiposDocumento.length > 0
+              ? datosTiposDocumento
+              : [
+                  { etiqueta: 'Contratos', valor: 0, color: '#2563eb' },
+                  { etiqueta: 'Demandas', valor: 0, color: '#059669' },
+                ]
+          }
+        />
       </section>
 
       <div className="rejilla-dos">

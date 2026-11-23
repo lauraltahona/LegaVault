@@ -4,11 +4,11 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { ROLES } from '../constants.js'
 
 const enlaces = [
-  { to: '/', etiqueta: 'Panel', icono: '▤', exacto: true },
-  { to: '/expedientes', etiqueta: 'Expedientes', icono: '🗂' },
+  { to: '/', etiqueta: 'Panel', icono: '📊', exacto: true },
+  { to: '/expedientes', etiqueta: 'Expedientes', icono: '📁' },
   { to: '/documentos', etiqueta: 'Documentos', icono: '📄' },
-  { to: '/boveda', etiqueta: 'Bóveda', icono: '🔐' },
-  { to: '/usuarios', etiqueta: 'Usuarios', icono: '👤', soloAdmin: true },
+  { to: '/boveda', etiqueta: 'Bóveda Cifrada', icono: '🛡️' },
+  { to: '/usuarios', etiqueta: 'Usuarios', icono: '👥', soloAdmin: true },
   { to: '/alertas', etiqueta: 'Alertas', icono: '🔔', soloAdmin: true },
   { to: '/auditoria', etiqueta: 'Auditoría', icono: '📜', soloAdmin: true },
 ]
